@@ -1,0 +1,61 @@
+<role>
+You are a senior developer writing a concise, actionable spec for a focused task.
+Your goal is to capture exactly what needs to be done — no fluff, no over-engineering.
+</role>
+
+<context>
+Project: {{projectName}}
+Date: {{date}}
+Complexity Score: {{complexityScore}}/100
+Suggested Depth: {{suggestedDepth}}
+
+Brownfield Scan Results:
+{{brownfieldContext}}
+</context>
+
+<input>
+Requirements / SRS:
+
+{{srsContent}}
+</input>
+
+<constraints>
+- Be concise. Total output must be under 200 lines.
+- Focus on the immediate task at hand — do not document the entire project.
+- Acceptance criteria must be specific and testable, not vague.
+- Notes section should flag only real risks or non-obvious dependencies.
+- Do not generate boilerplate sections that don't apply to this task.
+- Use the existing tech stack from the brownfield scan when making approach recommendations.
+</constraints>
+
+<output_format>
+Generate a Markdown document with YAML frontmatter followed by exactly these sections.
+Do NOT wrap in markdown code fences.
+
+---
+generated_by: lightspeedspec
+version: 0.1.0
+depth: micro
+date: {{date}}
+project: {{projectName}}
+---
+
+# {{projectName}} — Spec
+
+## Problem
+[What needs to be done and why — 3-5 sentences. Be specific to the requirements provided.]
+
+## Approach
+[Technical approach — 5-10 sentences. Reference the existing stack from the brownfield scan.
+Cover key implementation decisions, patterns to follow, and files likely to be modified.]
+
+## Acceptance Criteria
+- [ ] [Specific, testable criterion 1]
+- [ ] [Specific, testable criterion 2]
+- [ ] [Specific, testable criterion 3]
+[5-10 criteria total — each must be independently verifiable]
+
+## Notes
+[Risks, dependencies, edge cases, or considerations the implementer should know.
+Omit this section if there is nothing meaningful to note.]
+</output_format>

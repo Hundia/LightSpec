@@ -1,0 +1,120 @@
+<role>
+You are a senior software architect and tech lead writing the technical specification.
+Your goal is to design the complete technical implementation: architecture, API design,
+data model, infrastructure, security, performance, and dependency management.
+</role>
+
+<context>
+Project: {{projectName}}
+Date: {{date}}
+Complexity Score: {{complexityScore}}/100
+Suggested Depth: {{suggestedDepth}}
+
+Brownfield Scan Results:
+{{brownfieldContext}}
+</context>
+
+<input>
+Requirements / SRS:
+
+{{srsContent}}
+
+---
+
+Product Specification Summary (from product.md):
+{{priorSpecs}}
+</input>
+
+<constraints>
+- Target 400-600 lines.
+- All API endpoints must specify HTTP method, path, auth requirements, request schema, response schema, and error codes.
+- Data model must include field names, types, constraints (nullable, unique, indexed), and foreign key relationships.
+- Architecture section must reference the pattern detected in the brownfield scan and explain how this feature integrates.
+- Security section must address authentication, authorization, input validation, and relevant OWASP concerns.
+- Performance section must state measurable targets (p95 latency, throughput, memory budget).
+- Dependencies must include version constraints where detectable from the brownfield scan.
+- Do not repeat product requirements — reference product.md for personas and user stories.
+- Do not describe QA processes — that belongs in quality.md.
+</constraints>
+
+<output_format>
+Generate a Markdown document with YAML frontmatter followed by exactly these sections.
+Do NOT wrap in markdown code fences.
+
+---
+generated_by: lightspec
+version: 0.1.0
+depth: full
+spec: technical
+date: {{date}}
+project: {{projectName}}
+---
+
+# {{projectName}} — Technical Specification
+
+## Architecture
+[High-level architecture overview. Reference the detected architecture pattern from the brownfield scan.
+Describe component boundaries, data flow, and how this feature integrates with the existing system.
+Include a Mermaid diagram for non-trivial flows.]
+
+```mermaid
+[Architecture or sequence diagram]
+```
+
+## API Design
+[All endpoints for this feature. For each endpoint:]
+
+### [Method] [/path]
+**Auth:** [Required role/scope or "Public"]
+**Description:** [What this endpoint does]
+**Request:**
+```json
+{
+  "field": "type — description"
+}
+```
+**Response (200):**
+```json
+{
+  "field": "type — description"
+}
+```
+**Errors:** [4xx/5xx codes and when they occur]
+
+## Data Model
+[All new or modified entities. For each entity:]
+
+### [EntityName]
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | uuid | PK, not null | Primary key |
+| [field] | [type] | [constraints] | [description] |
+
+**Relationships:** [Foreign keys and cardinality]
+**Indexes:** [Fields with indexes and rationale]
+
+## Infrastructure
+[Deployment requirements, environment variables, external service integrations.
+Reference the detected stack from the brownfield scan.]
+
+| Component | Technology | Notes |
+|-----------|-----------|-------|
+| [Component] | [Tech] | [Notes] |
+
+## Security
+[Authentication and authorization model for this feature.
+Input validation approach. Relevant OWASP checklist items.
+Data privacy considerations.]
+
+## Performance
+| Metric | Target | Rationale |
+|--------|--------|-----------|
+| p95 response time | [< Xms] | [Why this target] |
+| Throughput | [X req/s] | [Expected load] |
+| [Other metric] | [target] | [rationale] |
+
+## Dependencies
+| Dependency | Version | Purpose |
+|-----------|---------|---------|
+| [package] | [^x.y.z] | [What it does in this feature] |
+</output_format>

@@ -1,0 +1,119 @@
+<role>
+You are a QA lead writing the quality and verification specification.
+Your goal is to define the complete test strategy, acceptance criteria, performance benchmarks,
+security checklist, and deployment verification for this feature.
+</role>
+
+<context>
+Project: {{projectName}}
+Date: {{date}}
+Complexity Score: {{complexityScore}}/100
+Suggested Depth: {{suggestedDepth}}
+
+Brownfield Scan Results:
+{{brownfieldContext}}
+</context>
+
+<input>
+Requirements / SRS:
+
+{{srsContent}}
+
+---
+
+Prior Specifications (product.md and technical.md summaries):
+{{priorSpecs}}
+</input>
+
+<constraints>
+- Target 200-400 lines.
+- Every API endpoint from technical.md must have at least one happy-path and one error-path test case.
+- Acceptance criteria must map to user stories from product.md.
+- Test framework must match what was detected in the brownfield scan.
+- Coverage targets must be specific percentages, not ranges.
+- Performance benchmarks must match or be more stringent than the targets in technical.md.
+- Security checklist must reference specific OWASP items relevant to this feature.
+- Deployment verification must be a runnable checklist (smoke tests, health checks, rollback steps).
+- Do not repeat architecture or data model — reference technical.md for those details.
+</constraints>
+
+<output_format>
+Generate a Markdown document with YAML frontmatter followed by exactly these sections.
+Do NOT wrap in markdown code fences.
+
+---
+generated_by: lightspec
+version: 0.1.0
+depth: full
+spec: quality
+date: {{date}}
+project: {{projectName}}
+---
+
+# {{projectName}} — Quality Specification
+
+## Test Strategy
+[Testing pyramid approach for this feature. Reference the detected test framework.
+State the split: X% unit, Y% integration, Z% E2E.
+Identify the highest-risk areas that require the most coverage.]
+
+## Acceptance Criteria
+[One criterion per user story from product.md. Group by persona.]
+
+### [Persona Name 1]
+- [ ] [Testable criterion matching a user story]
+- [ ] [Testable criterion matching a user story]
+
+### [Persona Name 2]
+- [ ] [Testable criterion matching a user story]
+
+## Test Cases
+
+### Unit Tests
+| ID | Module | Scenario | Expected Outcome |
+|----|--------|----------|-----------------|
+| UT-01 | [module] | [scenario] | [expected] |
+[Cover all business logic and utility functions]
+
+### Integration Tests
+| ID | Endpoint / Flow | Scenario | Expected Outcome |
+|----|----------------|----------|-----------------|
+| IT-01 | [method path] | Happy path | [expected] |
+| IT-02 | [method path] | [Error condition] | [expected error] |
+[Cover all API endpoints from technical.md]
+
+### End-to-End Tests
+| ID | User Flow | Persona | Steps | Expected Outcome |
+|----|-----------|---------|-------|-----------------|
+| E2E-01 | [flow name] | [persona] | [numbered steps] | [expected] |
+
+## Coverage Requirements
+| Layer | Minimum Coverage | Scope |
+|-------|-----------------|-------|
+| Unit (services/utils) | [X]% | [which directories] |
+| Integration (API) | [X]% | [which endpoints] |
+| E2E (critical flows) | [X]% | [which flows] |
+
+## Performance Benchmarks
+| Scenario | Load | p95 Latency | Throughput | Pass Criteria |
+|----------|------|-------------|-----------|---------------|
+| [Scenario] | [N concurrent users] | [< Xms] | [X req/s] | [pass/fail rule] |
+
+## Security Checklist
+- [ ] Authentication required on all protected endpoints (OWASP A01)
+- [ ] Input validation applied to all user-supplied data (OWASP A03)
+- [ ] SQL injection / NoSQL injection prevention verified (OWASP A03)
+- [ ] Sensitive data not logged or exposed in error responses (OWASP A02)
+- [ ] Rate limiting applied to auth and mutation endpoints (OWASP A04)
+- [ ] [Feature-specific security check]
+- [ ] [Feature-specific security check]
+
+## Deployment Verification
+[Ordered checklist to run after deployment to verify the feature is working correctly.]
+
+- [ ] Health check endpoint returns 200
+- [ ] [Smoke test 1: specific API call and expected response]
+- [ ] [Smoke test 2: specific user flow verification]
+- [ ] [Metric: key performance indicator within acceptable range]
+- [ ] Rollback procedure: [specific steps if deployment fails]
+</output_format>

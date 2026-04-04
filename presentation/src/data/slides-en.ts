@@ -1,0 +1,263 @@
+export interface SlideData {
+  type: string;
+  title: string;
+  subtitle?: string;
+  tagline?: string;
+  description?: string;
+  bullets?: string[];
+  stats?: Array<{ value: string; label: string }>;
+  [key: string]: unknown;
+}
+
+export const slidesEN: SlideData[] = [
+  {
+    type: 'title',
+    title: 'LightSpec',
+    subtitle: 'Just enough spec, just fast enough',
+    tagline: 'The lightweight SDD framework that adapts to your project\'s complexity',
+    badge: 'Part of the AutoSpec Family',
+  },
+  {
+    type: 'specOverkill',
+    title: 'The #1 Complaint',
+    subtitle: 'Specification Overkill',
+    description: 'We analyzed 30+ spec frameworks and developer workflows. The verdict is unanimous.',
+    stats: [
+      { value: '30+', label: 'frameworks analyzed' },
+      { value: '94%', label: 'cite over-specification' },
+      { value: '2000+', label: 'lines for a simple endpoint' },
+      { value: '0', label: 'tools with adaptive depth' },
+    ],
+    quote: '"Just generate 10 spec files for my 2-line bug fix" — No developer, ever',
+  },
+  {
+    type: 'contextRot',
+    title: 'Context Rot',
+    subtitle: 'The Hidden Cost of Under-Specification',
+    description: 'Without proper context, AI agents drift. Each session loses a little more fidelity.',
+    stages: [
+      { label: 'Day 1', quality: 100, note: 'Perfect alignment' },
+      { label: 'Week 1', quality: 75, note: 'Minor drift begins' },
+      { label: 'Month 1', quality: 45, note: 'Significant drift' },
+      { label: 'Month 3', quality: 20, note: 'Context rot sets in' },
+    ],
+    insight: 'Vibe coding: no docs → AI hallucinates past decisions → full rewrite every sprint',
+  },
+  {
+    type: 'adaptiveRigor',
+    title: 'Adaptive Rigor',
+    subtitle: 'The Killer Feature',
+    description: 'LightSpec is the first framework that matches spec depth to task complexity automatically.',
+    tagline: 'Right-size your specs. Every time.',
+    levels: [
+      {
+        name: 'Micro',
+        icon: 'zap',
+        color: 'amber',
+        useCase: 'Bug fix, config change',
+        lines: '<200 lines',
+        time: '~15 seconds',
+        files: '1 spec file',
+      },
+      {
+        name: 'Standard',
+        icon: 'layers',
+        color: 'blue',
+        useCase: 'New feature, module',
+        lines: '500–1K lines',
+        time: '~45 seconds',
+        files: '1 unified spec',
+      },
+      {
+        name: 'Full',
+        icon: 'building',
+        color: 'purple',
+        useCase: 'Major module, migration',
+        lines: '1K–2K lines',
+        time: '~90 seconds',
+        files: '3 focused specs',
+      },
+    ],
+  },
+  {
+    type: 'threeDepths',
+    title: 'Three Depths, One Command',
+    subtitle: 'lsp init — it figures out the rest',
+    depths: [
+      {
+        level: 'micro',
+        color: 'amber',
+        trigger: 'Score 0–25',
+        output: 'spec.md',
+        sections: ['Problem', 'Approach', 'Acceptance Criteria', 'Notes'],
+        example: '# Bug Fix — Spec\n\n## Problem\nDate formatting breaks in Safari\n\n## Approach\nReplace moment.js with date-fns\n\n## Acceptance Criteria\n- [ ] Dates render correctly in Safari\n- [ ] No regression in Chrome/Firefox',
+      },
+      {
+        level: 'standard',
+        color: 'blue',
+        trigger: 'Score 26–65',
+        output: 'spec.md',
+        sections: ['Overview', 'Technical Design', 'Implementation Plan', 'Testing Strategy', 'Task List'],
+        example: '# User Auth — Specification\n\n## Overview\nJWT-based authentication...\n\n## Technical Design\n### API Endpoints\nPOST /auth/login\nPOST /auth/refresh',
+      },
+      {
+        level: 'full',
+        color: 'purple',
+        trigger: 'Score 66–100',
+        output: 'product.md + technical.md + quality.md',
+        sections: ['Product', 'Technical', 'Quality'],
+        example: '# Platform Migration\n\nproduct.md   — personas, user stories\ntechnical.md — architecture, API, schema\nquality.md   — test plan, benchmarks',
+      },
+    ],
+  },
+  {
+    type: 'brownfield',
+    title: 'Brownfield Intelligence',
+    subtitle: 'LightSpec understands your codebase before generating a single line',
+    description: 'Five detection modules build a complete picture of your project in milliseconds.',
+    modules: [
+      { name: 'Stack Detector', icon: 'package', desc: 'Reads package.json, requirements.txt, go.mod' },
+      { name: 'Architecture Analyzer', icon: 'layout', desc: 'Directory patterns → monolith/modular/monorepo' },
+      { name: 'Route Scanner', icon: 'route', desc: 'Express/FastAPI/NestJS route detection' },
+      { name: 'Test Auditor', icon: 'check-circle', desc: 'Vitest/Jest/pytest test file count' },
+      { name: 'Docs Reader', icon: 'file-text', desc: 'README + existing spec awareness' },
+    ],
+    output: 'Complexity Score: 0–100 → Depth Level: micro | standard | full',
+  },
+  {
+    type: 'scannerDemo',
+    title: 'See It In Action',
+    subtitle: 'lsp scan — brownfield analysis in under a second',
+    terminalLines: [
+      { text: '$ lsp scan', type: 'command' },
+      { text: '', type: 'blank' },
+      { text: 'Scanning project...', type: 'info' },
+      { text: '', type: 'blank' },
+      { text: 'Tech Stack:   TypeScript, React, Express, Prisma', type: 'result' },
+      { text: 'Architecture: Modular (src/modules/)', type: 'result' },
+      { text: 'API Routes:   23 endpoints detected', type: 'result' },
+      { text: 'Tests:        47 test files (Vitest)', type: 'result' },
+      { text: 'Docs:         README.md + 6 doc files', type: 'result' },
+      { text: '', type: 'blank' },
+      { text: 'Complexity:   72/100 → Full depth recommended', type: 'highlight' },
+      { text: '', type: 'blank' },
+      { text: 'Run `lsp init` to generate specs', type: 'success' },
+    ],
+  },
+  {
+    type: 'liveDemo',
+    title: 'Live Demo',
+    subtitle: 'A complete lsp init session — start to finish',
+  },
+  {
+    type: 'useCases',
+    title: 'Every Task Has the Right Depth',
+    subtitle: 'Bug fix to migration — lsp adapts automatically',
+  },
+  {
+    type: 'architecture',
+    title: 'The lsp Pipeline',
+    subtitle: 'Four stages: Scanner → Router → Generator → Output',
+  },
+  {
+    type: 'stats',
+    title: 'By The Numbers',
+    subtitle: 'LightSpec in production',
+  },
+  {
+    type: 'pipeline',
+    title: 'The LightSpec Pipeline',
+    subtitle: '8 steps from zero to spec in under 90 seconds',
+    steps: [
+      { n: 1, name: 'Scan', desc: 'Brownfield detection', icon: 'search' },
+      { n: 2, name: 'Score', desc: 'Complexity heuristic', icon: 'bar-chart' },
+      { n: 3, name: 'Route', desc: 'Depth selection', icon: 'git-branch' },
+      { n: 4, name: 'Confirm', desc: 'User approval', icon: 'check-square' },
+      { n: 5, name: 'Generate', desc: 'LLM call(s)', icon: 'cpu' },
+      { n: 6, name: 'Extract', desc: 'Task parsing', icon: 'scissors' },
+      { n: 7, name: 'Write', desc: 'File output', icon: 'file-plus' },
+      { n: 8, name: 'Summary', desc: 'Report + next steps', icon: 'clipboard' },
+    ],
+  },
+  {
+    type: 'speedComparison',
+    title: 'Speed That Changes Everything',
+    subtitle: 'Stop treating every task like an enterprise migration',
+    comparison: {
+      autospec: {
+        name: 'AutoSpec',
+        time: '30 min',
+        seconds: 1800,
+        color: 'sage',
+        best: 'Complex multi-module systems',
+      },
+      lsp: {
+        name: 'LightSpec',
+        time: '< 60 sec',
+        seconds: 60,
+        color: 'amber',
+        best: 'Everything from bug fixes to large features',
+      },
+    },
+    insight: 'A 30x speed improvement means you\'ll actually use it for every task — not just big ones.',
+  },
+  {
+    type: 'graduation',
+    title: 'Graduate When Ready',
+    subtitle: 'LightSpec grows with your project',
+    description: 'Hit complexity score 80+? One command converts your LightSpec output to full AutoSpec.',
+    steps: [
+      { step: '1', label: 'lsp init', desc: 'Start with LightSpec — fast, adaptive' },
+      { step: '2', label: 'lsp status', desc: 'Track task completion' },
+      { step: '3', label: 'lsp graduate', desc: 'Promote to full AutoSpec' },
+    ],
+    what: [
+      'Creates specs/ with 10 role spec files',
+      'Maps LightSpec content to appropriate roles',
+      'Generates backlog.md from tasks.md',
+      'Creates CLAUDE.md from template',
+    ],
+  },
+  {
+    type: 'family',
+    title: 'The AutoSpec Family',
+    subtitle: 'Right tool, right complexity',
+    members: [
+      {
+        name: 'LightSpec',
+        abbr: 'lsp',
+        color: 'amber',
+        role: 'Lightweight Champion',
+        specs: '1–3 files',
+        depth: 'Adaptive',
+        time: '< 60 sec',
+        best: 'Most projects',
+        icon: 'zap',
+      },
+      {
+        name: 'AutoSpec',
+        abbr: 'AS',
+        color: 'sage',
+        role: 'Enterprise Champion',
+        specs: '10 role files',
+        depth: 'Full ceremony',
+        time: '30+ min',
+        best: 'Complex systems',
+        icon: 'shield',
+      },
+    ],
+    arrow: 'Graduate when ready →',
+  },
+  {
+    type: 'closing',
+    title: 'Start in 30 Seconds',
+    subtitle: 'Just enough spec. Just fast enough.',
+    command: 'npx lightspec init',
+    links: [
+      { label: 'GitHub', url: 'https://github.com/autospec/lightspec', icon: 'github' },
+      { label: 'AutoSpec Family', url: 'https://autospec.dev', icon: 'external-link' },
+      { label: 'Documentation', url: '#', icon: 'book-open' },
+    ],
+    tagline: 'Stop over-speccing. Start shipping.',
+  },
+];

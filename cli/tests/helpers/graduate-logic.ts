@@ -1,0 +1,158 @@
+// tests/helpers/graduate-logic.ts
+// Extracted graduate logic that can be called with a custom base directory for testing.
+// This mirrors the logic in src/commands/graduate.ts but accepts an explicit baseDir.
+
+import path from 'path';
+import { readFile, writeFile, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+
+const TODAY = new Date().toISOString().split('T')[0];
+
+function extractSection(content: string, heading: string): string {
+  const lines = content.split('\n');
+  let capturing = false;
+  let headingLevel = 2;
+  const result: string[] = [];
+
+  for (const line of lines) {
+    const headingMatch = /^(#{1,6})\s+(.+)$/.exec(line);
+
+    if (headingMatch) {
+      const level = headingMatch[1].length;
+      const title = headingMatch[2].trim();
+
+      if (capturing) {
+        if (level <= headingLevel) break;
+      }
+
+      if (title.toLowerCase().includes(heading.toLowerCase())) {
+        capturing = true;
+        headingLevel = level;
+        result.push(line);
+        continue;
+      }
+    }
+
+    if (capturing) result.push(line);
+  }
+
+  return result.join('\n').trim();
+}
+
+function makeRoleFrontmatter(role: string, sourceFile: string): string {
+  return [
+    '---',
+    `role: ${role}`,
+    'generated_by: lightspec-graduate',
+    `source: ${sourceFile}`,
+    `date: ${TODAY}`,
+    'status: draft',
+    '---',
+    '',
+  ].join('\n');
+}
+
+function stubRole(roleNumber: number, roleName: string, description: string): string {
+  const frontmatter = makeRoleFrontmatter(roleName, '.lsp/spec.md');
+  return (
+    frontmatter +
+    `# ${roleName.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())} Spec\n\n` +
+    `> TODO: Role ${roleNumber.toString().padStart(2, '0')}: ${description}\n\n` +
+    `## Responsibilities\n\n- [ ] Define ${description.toLowerCase()} requirements\n`
+  );
+}
+
+export async function graduateLogic(baseDir: string, specContent: string): Promise<void> {
+  const specsDir = path.join(baseDir, 'specs');
+  const lspDir = path.join(baseDir, '.lsp');
+  const sourceLabel = '.lsp/spec.md';
+
+  await mkdir(specsDir, { recursive: true });
+
+  const overviewSection =
+    extractSection(specContent, 'Overview') ||
+    extractSection(specContent, 'Vision') ||
+    '## Overview\n\n_See .lsp/spec.md_';
+
+  const technicalSection =
+    extractSection(specContent, 'Technical Design') ||
+    extractSection(specContent, 'Architecture') ||
+    '## Technical Design\n\n_See .lsp/spec.md_';
+
+  const frontendSection =
+    extractSection(specContent, 'Frontend') ||
+    extractSection(specContent, 'UI') ||
+    '## Frontend\n\n_See .lsp/spec.md_';
+
+  const dataModelSection =
+    extractSection(specContent, 'Data Model') ||
+    extractSection(specContent, 'Schema') ||
+    '## Data Model\n\n_See .lsp/spec.md_';
+
+  const testingSection =
+    extractSection(specContent, 'Testing') ||
+    extractSection(specContent, 'Quality') ||
+    '## Testing\n\n_See .lsp/spec.md_';
+
+  const pm =
+    makeRoleFrontmatter('product_manager', sourceLabel) +
+    `# Product Manager Spec\n\n${overviewSection}\n`;
+
+  const be =
+    makeRoleFrontmatter('backend_lead', sourceLabel) +
+    `# Backend Lead Spec\n\n${technicalSection}\n`;
+
+  const fe =
+    makeRoleFrontmatter('frontend_lead', sourceLabel) +
+    `# Frontend Lead Spec\n\n${frontendSection}\n`;
+
+  const db =
+    makeRoleFrontmatter('db_architect', sourceLabel) +
+    `# DB Architect Spec\n\n${dataModelSection}\n`;
+
+  const qa =
+    makeRoleFrontmatter('qa_lead', sourceLabel) +
+    `# QA Lead Spec\n\n${testingSection}\n`;
+
+  const specFiles: Array<[string, string]> = [
+    ['01_product_manager.md', pm],
+    ['02_backend_lead.md', be],
+    ['03_frontend_lead.md', fe],
+    ['04_db_architect.md', db],
+    ['05_qa_lead.md', qa],
+    ['06_devops_lead.md', stubRole(6, 'devops_lead', 'DevOps and deployment infrastructure')],
+    ['07_security_lead.md', stubRole(7, 'security_lead', 'Security, authentication and authorization')],
+    ['08_data_engineer.md', stubRole(8, 'data_engineer', 'Data pipelines, analytics and reporting')],
+    ['09_tech_writer.md', stubRole(9, 'tech_writer', 'Documentation and developer experience')],
+    ['10_project_manager.md', stubRole(10, 'project_manager', 'Project timeline, risks and delivery')],
+  ];
+
+  for (const [filename, content] of specFiles) {
+    await writeFile(path.join(specsDir, filename), content, 'utf-8');
+  }
+
+  // Create backlog.md
+  const tasksPath = path.join(lspDir, 'tasks.md');
+  let backlogContent =
+    `# Project Backlog\n\n` +
+    `> Graduated from LightSpec on ${TODAY}.\n\n` +
+    `## Sprint 1\n\n`;
+
+  if (existsSync(tasksPath)) {
+    const tasksContent = await readFile(tasksPath, 'utf-8');
+    backlogContent += tasksContent;
+  }
+
+  await writeFile(path.join(specsDir, 'backlog.md'), backlogContent, 'utf-8');
+
+  // Create CLAUDE.md
+  const claudeMd =
+    `# Claude Code Memory — [Project Name]\n\n` +
+    `> Generated by \`lsp graduate\` on ${TODAY}.\n\n` +
+    `## Development Workflow\n\n` +
+    `All changes tracked in \`specs/\`.\n\n` +
+    `## Project Structure\n\n` +
+    `\`\`\`\nspecs/\n.lsp/\n\`\`\`\n`;
+
+  await writeFile(path.join(baseDir, 'CLAUDE.md'), claudeMd, 'utf-8');
+}
