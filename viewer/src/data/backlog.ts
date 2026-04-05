@@ -88,5 +88,34 @@ export const backlogData: Sprint[] = [
       { id: '38.16', title: 'Viewer backlog.ts Sprint 38 entry', owner: 'Frontend', points: 2, status: 'done', dependencies: [] },
       { id: '38.17', title: 'Build verification + visual QA — 16 slides', owner: 'QA', points: 3, status: 'todo', dependencies: ['38.15', '38.16'] },
     ]
+  },
+  {
+    number: '39',
+    name: 'Sprint 39',
+    theme: "Developer's Guide — Task Flow API + Interactive Tutorial",
+    status: 'in-progress',
+    totalPoints: 64,
+    tickets: [
+      // Phase 1: Foundation
+      { id: '39.1', title: 'task-flow-api scaffold: package.json, tsconfig, vitest.config, SQLite schema', owner: 'Backend', points: 3, status: 'in-progress', dependencies: [] },
+      { id: '39.2', title: 'task-flow-api auth routes + service (register, login, JWT)', owner: 'Backend', points: 5, status: 'in-progress', dependencies: ['39.1'] },
+      { id: '39.3', title: 'task-flow-api lists + tasks routes + services (CRUD, status transitions)', owner: 'Backend', points: 5, status: 'in-progress', dependencies: ['39.2'] },
+      { id: '39.4', title: 'task-flow-api 20 integration tests (Vitest + supertest, all passing)', owner: 'QA', points: 5, status: 'in-progress', dependencies: ['39.3'] },
+      // Phase 2: Guide Site
+      { id: '39.5', title: 'Guide scaffold: Vite + AutoDeck engine + GuidePage + StepPanel split-panel layout', owner: 'Frontend', points: 5, status: 'in-progress', dependencies: [] },
+      { id: '39.6', title: 'Display components: TerminalBlock, FileViewer, FileTree, SpecViewer, TaskListView, DirTree, StatsRow', owner: 'Frontend', points: 5, status: 'in-progress', dependencies: ['39.5'] },
+      { id: '39.7', title: 'steps-en.ts data architecture + real CLI output capture for steps 3–6', owner: 'Backend', points: 3, status: 'in-progress', dependencies: ['39.4', '39.5'] },
+      { id: '39.8', title: 'Sprint 39 SDD: backlog tickets, viewer data, agents/sprint-39-brief.md', owner: 'PM', points: 3, status: 'in-progress', dependencies: [] },
+      // Phase 3: Guide Content
+      { id: '39.9', title: 'Guide steps 1–3: Welcome, Project Tour, lsp scan', owner: 'Frontend', points: 5, status: 'todo', dependencies: ['39.6', '39.7'] },
+      { id: '39.10', title: 'Guide steps 4–6: lsp init, Spec Review, lsp status', owner: 'Frontend', points: 5, status: 'todo', dependencies: ['39.7'] },
+      { id: '39.11', title: 'Guide steps 7–9: /execute-ticket, Sprint Progress, /plan-sprint', owner: 'Frontend', points: 5, status: 'todo', dependencies: ['39.6'] },
+      { id: '39.12', title: 'Guide steps 10–12: Sprint 2 Init, lsp graduate, Continuity', owner: 'Frontend', points: 5, status: 'todo', dependencies: ['39.6'] },
+      { id: '39.13', title: 'DiffViewer.tsx and TimelineView.tsx display components', owner: 'Frontend', points: 2, status: 'todo', dependencies: ['39.5'] },
+      // Phase 4: Integration + QA
+      { id: '39.14', title: 'Wire all 12 steps into GuidePage registry, chapter sidebar complete', owner: 'Frontend', points: 3, status: 'todo', dependencies: ['39.9', '39.10', '39.11', '39.12'] },
+      { id: '39.15', title: 'GitHub Actions update: guide build + nest guide/dist at presentation/dist/guide/', owner: 'DevOps', points: 3, status: 'todo', dependencies: ['39.5'] },
+      { id: '39.16', title: 'Final QA: all builds + 20 e2e tests + naming checks + sprint-39 summary', owner: 'QA', points: 2, status: 'todo', dependencies: ['39.14', '39.15'] },
+    ]
   }
 ]

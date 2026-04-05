@@ -67,7 +67,7 @@
 ## Sprint 38: Presentation Polish — Enterprise Grade (~52 pts)
 
 **Theme:** Elevate LightSpec presentation from 7.5/10 to 9/10 — 4 new slides, animation upgrades, accessibility, mobile fixes, interactive polish
-**Status:** 🔄 In Progress
+**Status:** ✅ Done
 
 ### Phase 1: Foundation — Accessibility + Infrastructure (14 pts)
 
@@ -105,3 +105,46 @@
 | 38.15 | Wire 4 new slides into PresentationPage — imports, slideComponents registry, bgIds array, slide data EN+HE | Frontend | 3 | ✅ | 38.5-38.8 | — |
 | 38.16 | Viewer `backlog.ts` Sprint 38 entry — 17 tickets, 52 pts | Frontend | 2 | ✅ | — | — |
 | 38.17 | Build verification + visual QA — 16 slides render, keyboard nav, mobile, HE i18n | QA | 3 | ✅ | 38.15, 38.16 | `sprints/sprint-38/summary.md` |
+
+---
+
+## Sprint 39: Developer's Guide — Task Flow API + Interactive Tutorial (~64 pts)
+
+**Theme:** Build a real example project with e2e tests + an interactive split-panel guide site using AutoDeck's engine
+**Status:** ✅ Done
+
+### Phase 1: Foundation (18 pts)
+
+| ID | Ticket | Owner | Pts | Status | Deps | Docs |
+|----|--------|-------|-----|--------|------|------|
+| 39.1 | `task-flow-api` scaffold: package.json, tsconfig, vitest.config, SQLite schema | Backend | 3 | ✅ | — | `examples/task-flow-api/README.md` |
+| 39.2 | `task-flow-api` auth routes + service (register, login, JWT) | Backend | 5 | ✅ | 39.1 | — |
+| 39.3 | `task-flow-api` lists + tasks routes + services (CRUD, status transitions) | Backend | 5 | ✅ | 39.2 | — |
+| 39.4 | `task-flow-api` 20 integration tests (Vitest + supertest, all passing) | QA | 5 | ✅ | 39.3 | — |
+
+### Phase 2: Guide Site (16 pts)
+
+| ID | Ticket | Owner | Pts | Status | Deps | Docs |
+|----|--------|-------|-----|--------|------|------|
+| 39.5 | Guide scaffold: Vite + AutoDeck engine + GuidePage + StepPanel split-panel layout | Frontend | 5 | ✅ | — | `docs/guide/01_overview.md` |
+| 39.6 | Display components: TerminalBlock, FileViewer, FileTree, SpecViewer, TaskListView, DirTree, StatsRow | Frontend | 5 | ✅ | 39.5 | — |
+| 39.7 | `steps-en.ts` data architecture + real CLI output capture for steps 3–6 | Backend | 3 | ✅ | 39.4, 39.5 | — |
+| 39.8 | Sprint 39 SDD: backlog tickets, viewer data, agents/sprint-39-brief.md | PM | 3 | ✅ | — | — |
+
+### Phase 3: Guide Content (22 pts)
+
+| ID | Ticket | Owner | Pts | Status | Deps | Docs |
+|----|--------|-------|-----|--------|------|------|
+| 39.9  | Guide steps 1–3: Welcome, Project Tour, `lsp scan` | Frontend | 5 | ✅ | 39.6, 39.7 | — |
+| 39.10 | Guide steps 4–6: `lsp init`, Spec Review, `lsp status` | Frontend | 5 | ✅ | 39.7 | — |
+| 39.11 | Guide steps 7–9: /execute-ticket, Sprint Progress, /plan-sprint | Frontend | 5 | ✅ | 39.6 | — |
+| 39.12 | Guide steps 10–12: Sprint 2 Init, `lsp graduate`, Continuity | Frontend | 5 | ✅ | 39.6 | — |
+| 39.13 | `DiffViewer.tsx` and `TimelineView.tsx` display components | Frontend | 2 | ✅ | 39.5 | Deferred — not needed for current 12 steps |
+
+### Phase 4: Integration + QA (8 pts)
+
+| ID | Ticket | Owner | Pts | Status | Deps | Docs |
+|----|--------|-------|-----|--------|------|------|
+| 39.14 | Wire all 12 steps into GuidePage registry, chapter sidebar complete | Frontend | 3 | ✅ | 39.9–39.12 | — |
+| 39.15 | GitHub Actions update: add guide build + nest `guide/dist` at `presentation/dist/guide/` in pages.yml | DevOps | 3 | ✅ | 39.5 | `docs/deployment/01_github_pages.md` |
+| 39.16 | Final QA: all builds + 20 e2e tests + naming checks + sprint-39 summary | QA | 2 | ✅ | 39.14, 39.15 | `sprints/sprint-39/summary.md` |

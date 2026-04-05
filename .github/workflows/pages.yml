@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: '20'
 
-      # Build presentation (serves at GitHub Pages root /LightSpec/)
+      # Build presentation (serves at /LightSpec/)
       - name: Build presentation
         working-directory: presentation
         run: |
@@ -39,11 +39,20 @@ jobs:
           npm ci
           npm run build
 
-      # Nest viewer inside presentation build output
+      # Build guide (serves at /LightSpec/guide/)
+      - name: Build guide
+        working-directory: guide
+        run: |
+          npm ci
+          npm run build
+
+      # Nest viewer and guide inside presentation build output
       - name: Combine build outputs
         run: |
           mkdir -p presentation/dist/viewer
           cp -r viewer/dist/. presentation/dist/viewer/
+          mkdir -p presentation/dist/guide
+          cp -r guide/dist/. presentation/dist/guide/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

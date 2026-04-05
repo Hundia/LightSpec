@@ -26,6 +26,10 @@ const bottomNavItems = [
   { to: '/design-system', label: 'Design System', icon: Palette },
 ]
 
+const externalNavItems = [
+  { href: 'https://hundia.github.io/LightSpec/guide/', label: 'Guide', icon: BookOpen },
+]
+
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   [
     'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200',
@@ -119,6 +123,19 @@ export const Sidebar: React.FC = () => {
             <Icon size={16} />
             {label}
           </NavLink>
+        ))}
+
+        {externalNavItems.map(({ href, label, icon: Icon }) => (
+          <a
+            key={href}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 text-charcoal hover:bg-sand-200 hover:text-sage-700"
+          >
+            <Icon size={16} />
+            {label}
+          </a>
         ))}
       </nav>
       <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sand">
