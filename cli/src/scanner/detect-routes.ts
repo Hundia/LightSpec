@@ -1,11 +1,12 @@
 /**
  * detect-routes.ts
  * Detects HTTP API routes defined in source files.
- * Supports Express, Fastify, NestJS (Node/TS) and Flask (Python).
+ * Supports Express, Fastify, NestJS (Node/TS), Flask (Python), and Go (Gin/Echo/Fiber/Chi).
  * Pure function — file reads only, no LLM calls.
  */
 
 import { readFile } from 'fs/promises';
+import path from 'path';
 import { glob } from 'glob';
 import type { ProjectRoutes, TechStack } from './types.js';
 
@@ -70,6 +71,53 @@ function extractFlaskRoutes(content: string, filePath: string): RouteEntry[] {
       routes.push({ method, path: routePath, file: filePath });
     }
   }
+  return routes;
+}
+
+/**
+ * Extract Go HTTP routes from Gin, Echo, Fiber, and Chi.
+ *
+ * Gin/Echo use uppercase: r.GET("/path", h), e.GET("/path", h)
+ * Fiber/Chi use mixed-case: app.Get("/path", h), r.Get("/path", h)
+ *
+ * Single regex captures both forms, with the method name in capture group 1
+ * and the route path in capture group 2.
+ */
+export async function extractGoRoutes(projectPath: string): Promise<RouteEntry[]> {
+  const routes: RouteEntry[] = [];
+
+  let goFiles: string[] = [];
+  try {
+    goFiles = await glob('**/*.go', {
+      cwd: projectPath,
+      ignore: ['vendor/**', '*_test.go'],
+      absolute: true,
+    });
+  } catch {
+    return routes;
+  }
+
+  // Matches: .<METHOD>( "<path>" where METHOD is GET/Post/DELETE etc.
+  // Covers uppercase (Gin/Echo) and TitleCase (Fiber/Chi)
+  const routeRe = /\.\s*(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD|Get|Post|Put|Patch|Delete|Options|Head)\s*\(\s*["'`]([^"'`]+)["'`]/g;
+
+  for (const file of goFiles) {
+    let content = '';
+    try {
+      content = await readFile(file, 'utf-8');
+    } catch {
+      continue;
+    }
+
+    routeRe.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = routeRe.exec(content)) !== null) {
+      const method = match[1].toUpperCase();
+      const routePath = match[2];
+      routes.push({ method, path: routePath, file: path.relative(projectPath, file) });
+    }
+  }
+
   return routes;
 }
 
@@ -160,6 +208,20 @@ export async function detectRoutes(
         routes.push(...flaskRoutes);
         if (!framework) framework = 'flask';
       }
+    }
+  }
+
+  // Scan Go files for Gin/Echo/Fiber/Chi routes
+  const GO_FRAMEWORKS = ['gin', 'echo', 'fiber', 'chi'];
+  const hasGoFramework = techStack.frameworks.some(f =>
+    GO_FRAMEWORKS.includes(f.toLowerCase()),
+  );
+
+  if (hasGoFramework || techStack.languages.includes('go')) {
+    const goRoutes = await extractGoRoutes(projectPath);
+    if (goRoutes.length > 0) {
+      routes.push(...goRoutes);
+      if (!framework) framework = 'go-http';
     }
   }
 

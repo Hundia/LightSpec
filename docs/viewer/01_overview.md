@@ -24,7 +24,7 @@ The viewer uses the same warm palette as the AutoSpec viewer, sourced from the F
 
 No shadcn/ui, no @radix-ui. All primitives (Button, Card, Badge, Input) are custom components ported from `/opt/FitnessAiManager/apps/web/src/design-system/components/primitives/`.
 
-## Pages (10 total)
+## Pages (11 total)
 
 | Page | Route | Description |
 |------|-------|-------------|
@@ -38,6 +38,7 @@ No shadcn/ui, no @radix-ui. All primitives (Button, Card, Badge, Input) are cust
 | QuickStart | `/#/quickstart` | Rendered QUICKSTART.md guide |
 | DesignSystem | `/#/design-system` | Palette swatches, primitive showcase |
 | LspPage | `/#/lsp` | LightSpec CLI dashboard — scan results, depth levels, graduation path |
+| MarketingPage | `/#/marketing` | Launch dashboard — 5 posts, 5 articles, 8 milestones, 6 channels with dependency graph, Next Action card, and KPI row |
 
 ## Data Layer
 
@@ -49,6 +50,7 @@ All data is static TypeScript modules in `viewer/src/data/`:
 | `specs.ts` | `SpecEntry[]` | 10 SDD role entries (name, description, file reference) |
 | `docs.ts` | `DocSection[]` | Documentation section manifest with file counts |
 | `environments.ts` | `EnvEntry[]` | IDE and terminal environment setup entries |
+| `marketing.ts` | `MarketingData`, `LinkedInPost`, `Article`, `LaunchMilestone`, `Channel`, `resolveBlockers()` | Launch content pipeline: 5 posts, 5 articles, 8 milestones, 6 channels. `resolveBlockers(data, itemId)` returns `true` if all `blockedBy` dependencies are resolved (post/article `published`, milestone `done`). Used by `MarketingPage` and `NextActionCard`. |
 
 ### Key Interfaces
 
@@ -91,6 +93,7 @@ The viewer uses `HashRouter` from `react-router-dom`. All routes are prefixed wi
       <Route path="/quickstart" element={<QuickStart />} />
       <Route path="/design-system" element={<DesignSystem />} />
       <Route path="/lsp" element={<LspPage />} />
+      <Route path="/marketing" element={<MarketingPage />} />
     </Routes>
   </Layout>
 </HashRouter>

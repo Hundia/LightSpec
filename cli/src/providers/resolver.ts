@@ -39,14 +39,22 @@ export async function resolveProvider(override?: string): Promise<LLMProvider> {
     if (await provider.isAvailable()) return provider;
   }
 
-  throw new Error(
-    'No LLM provider found.\n\n' +
-      'Install one of:\n' +
-      '  Claude Code:    npm i -g @anthropic-ai/claude-code && claude auth login\n' +
-      '  Gemini CLI:     npm i -g @google/gemini-cli && gemini auth login\n' +
-      '  Anthropic API:  export ANTHROPIC_API_KEY=sk-ant-...\n\n' +
-      'Check status: autospec doctor\n',
-  );
+  const PROVIDER_HELP = `No LLM provider found. Set up one of these:
+
+  Option 1 — Claude Code (recommended, no API key needed)
+    npm install -g @anthropic-ai/claude-code
+
+  Option 2 — Anthropic API
+    export ANTHROPIC_API_KEY=sk-ant-...
+    Get free credits: https://console.anthropic.com
+
+  Option 3 — Gemini API
+    export GEMINI_API_KEY=...
+    Free tier: https://aistudio.google.com
+
+Then re-run: lsp init .`;
+
+  throw new Error(PROVIDER_HELP);
 }
 
 /**

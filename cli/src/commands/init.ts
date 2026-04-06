@@ -68,6 +68,15 @@ export async function initCommand(
   const srsFile =
     typeof opts['srs'] === 'string' ? opts['srs'] : undefined;
 
+  // TTY check — must come before any readline/prompt usage
+  if (!process.stdin.isTTY && !skipConfirm) {
+    console.error(
+      'Non-interactive mode detected. Use --yes flag to skip prompts.\n' +
+      'Example: lsp init . --yes'
+    );
+    process.exit(1);
+  }
+
   console.log('');
   console.log(chalk.bold.cyan('  LightSpec — lsp init'));
   console.log(chalk.gray(`  Project: ${targetPath}`));
@@ -142,7 +151,18 @@ export async function initCommand(
     return;
   }
 
-  // 7. Confirm
+  // 7. Resolve provider BEFORE confirmation prompt — user sees which provider
+  //    will be used before committing to the run
+  let provider;
+  try {
+    provider = await resolveProvider(providerOverride);
+    console.log(chalk.dim(`  Using provider: ${provider.name}`));
+  } catch (err) {
+    console.error(chalk.red('\n' + (err as Error).message));
+    process.exit(1);
+  }
+
+  // 8. Confirm
   if (!skipConfirm) {
     console.log('');
     const ok = await confirm(chalk.bold('  Proceed with generation? [Y/n] '));
@@ -153,7 +173,7 @@ export async function initCommand(
     }
   }
 
-  // 8. Read SRS file if provided
+  // 9. Read SRS file if provided
   let srsContent: string | undefined;
   if (srsFile) {
     const srsPath = path.resolve(srsFile);
@@ -162,19 +182,6 @@ export async function initCommand(
       process.exit(1);
     }
     srsContent = await readFile(srsPath, 'utf-8');
-  }
-
-  // 9. Resolve provider
-  const providerSpinner = ora('Resolving LLM provider...').start();
-  let provider;
-  try {
-    provider = await resolveProvider(providerOverride);
-    providerSpinner.succeed(`Using provider: ${chalk.bold(provider.name)}`);
-  } catch (err) {
-    providerSpinner.fail('No LLM provider available');
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(chalk.red(`\n${message}`));
-    process.exit(1);
   }
 
   // 10. Ensure output directory exists
@@ -202,7 +209,7 @@ export async function initCommand(
     process.exit(1);
   }
 
-  // 12. Extract tasks and write tasks.md
+  // 12. Extract tasks and write tasks.md + scan-result.json
   const taskSpinner = ora('Extracting tasks...').start();
   try {
     // Read spec content for task extraction
@@ -216,6 +223,14 @@ export async function initCommand(
     const tasks = extractTasks(allSpecContent);
     const tasksMarkdown = formatTasksMarkdown(tasks);
     await writeFile(path.join(outputDir, 'tasks.md'), tasksMarkdown, 'utf-8');
+
+    // Write scan-result.json so lsp graduate can read architecture flags
+    await writeFile(
+      path.join(outputDir, 'scan-result.json'),
+      JSON.stringify(scanResult, null, 2),
+      'utf-8',
+    );
+
     taskSpinner.succeed(`Tasks extracted: ${tasks.length} task(s) written to tasks.md`);
   } catch (err) {
     taskSpinner.fail('Task extraction failed (non-fatal)');
@@ -239,5 +254,7 @@ export async function initCommand(
   console.log(
     `  ${chalk.cyan('3.')} Grow into AutoSpec: ${chalk.gray('lsp graduate')} (when ready)`,
   );
+  console.log('');
+  console.log(chalk.dim("  Ready for AutoSpec skills? Run 'lsp init-backlog' to create specs/backlog.md"));
   console.log('');
 }

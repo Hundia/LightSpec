@@ -3,6 +3,7 @@
 import { existsSync } from 'fs';
 import { readdir } from 'fs/promises';
 import path from 'path';
+import { glob } from 'glob';
 import type { Architecture } from './types.js';
 
 async function listDirs(dirPath: string): Promise<string[]> {
@@ -145,7 +146,38 @@ export async function detectArchitecture(projectPath: string): Promise<Architect
   const allDirs = [...rootDirs, ...srcDirs, ...srcFiles, ...appDirs, ...appFiles];
   const allFiles = [...rootFiles, ...srcFiles, ...appFiles];
 
-  const hasApi = detectApiPresence(allDirs, allFiles);
+  let hasApi = detectApiPresence(allDirs, allFiles);
+
+  // Additional check for Go projects: main.go anywhere outside vendor/ signals an API
+  if (!hasApi) {
+    try {
+      const mainGoFiles = await glob('**/main.go', {
+        cwd: projectPath,
+        ignore: ['vendor/**'],
+      });
+      if (mainGoFiles.length > 0) {
+        hasApi = true;
+      }
+    } catch {
+      // ignore glob errors
+    }
+  }
+
+  // Check for common Go API directory patterns
+  if (!hasApi) {
+    try {
+      const goApiDirs = await glob(
+        '{internal/http,pkg/api,cmd/server,cmd/api,api,handler,handlers}/',
+        { cwd: projectPath, ignore: ['vendor/**'] },
+      );
+      if (goApiDirs.length > 0) {
+        hasApi = true;
+      }
+    } catch {
+      // ignore glob errors
+    }
+  }
+
   const hasFrontend = detectFrontendPresence(rootDirs, rootFiles);
   const hasDatabase = detectDatabasePresence(allDirs, allFiles);
 

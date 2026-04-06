@@ -6,6 +6,7 @@ import path from 'path';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import chalk from 'chalk';
+import { findLspDir } from './done.js';
 
 interface TaskEntry {
   id: string;
@@ -47,12 +48,21 @@ function parseTasksMarkdown(content: string): TaskEntry[] {
 }
 
 export async function statusCommand(): Promise<void> {
-  const tasksPath = path.join(process.cwd(), '.lsp', 'tasks.md');
+  const lspDir = findLspDir(process.cwd());
+  const tasksPath = lspDir ? path.join(lspDir, 'tasks.md') : null;
 
-  if (!existsSync(tasksPath)) {
+  if (!lspDir || !tasksPath || !existsSync(tasksPath)) {
     console.log('');
     console.log(chalk.yellow('  No LightSpec output found.'));
-    console.log(chalk.gray(`  Expected: ${tasksPath}`));
+    if (tasksPath) {
+      console.log(chalk.gray(`  Expected: ${tasksPath}`));
+    } else {
+      console.log(
+        chalk.red(
+          "  No .lsp/ directory found. Run 'lsp init' first, or use --dir to specify your project path.",
+        ),
+      );
+    }
     console.log('');
     console.log(`  Run ${chalk.cyan('lsp init')} to generate a spec and task list.`);
     console.log('');

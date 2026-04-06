@@ -4,6 +4,8 @@
  */
 
 import { Command } from 'commander';
+import { makeDoneCommand } from './commands/done.js';
+import { makeInitBacklogCommand } from './commands/init-backlog.js';
 
 const program = new Command()
   .name('lsp')
@@ -48,9 +50,16 @@ program
   .command('graduate')
   .description('Convert LSP output to full AutoSpec project')
   .option('--srs <file>', 'Use existing SRS for AutoSpec generation')
+  .option('--roles <roles>', 'Comma-separated roles to include (e.g. pm,backend,qa)')
+  .option('--dry-run', 'Preview what graduate would generate without writing files')
+  .option('-y, --yes', 'Skip confirmation prompts (overwrite CLAUDE.md if it exists)')
   .action(async (_opts: Record<string, unknown>) => {
     const { graduateCommand } = await import('./commands/graduate.js');
     await graduateCommand(_opts);
   });
+
+program.addCommand(makeDoneCommand(false));
+program.addCommand(makeDoneCommand(true));
+program.addCommand(makeInitBacklogCommand());
 
 program.parse(process.argv);

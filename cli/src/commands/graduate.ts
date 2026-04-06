@@ -7,6 +7,8 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import chalk from 'chalk';
 import ora from 'ora';
+import type { ScanResult } from '../scanner/types.js';
+import { findLspDir } from './done.js';
 
 // ---------------------------------------------------------------------------
 // Section extraction helpers
@@ -70,6 +72,21 @@ async function readSpecFiles(lspDir: string): Promise<string> {
   return parts.join('\n\n');
 }
 
+/**
+ * Attempt to load scan result from .lsp/scan-result.json.
+ * Returns null if not available (graceful fallback).
+ */
+async function loadScanResult(lspDir: string): Promise<ScanResult | null> {
+  const scanResultPath = path.join(lspDir, 'scan-result.json');
+  if (!existsSync(scanResultPath)) return null;
+  try {
+    const raw = await readFile(scanResultPath, 'utf-8');
+    return JSON.parse(raw) as ScanResult;
+  } catch {
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Role spec generators
 // ---------------------------------------------------------------------------
@@ -102,33 +119,96 @@ function stubRole(roleNumber: number, roleName: string, description: string): st
   );
 }
 
+/**
+ * Determine which role file IDs to skip based on scan metadata and --roles flag.
+ */
+function computeSkipRoles(
+  scanResult: ScanResult | null,
+  rolesFlag: string | undefined,
+): string[] {
+  // If --roles flag is provided, only include those roles — skip everything else
+  if (rolesFlag) {
+    const requestedRoles = rolesFlag.split(',').map(r => r.trim().toLowerCase());
+    // Map friendly names to file prefixes
+    const roleAliasMap: Record<string, string> = {
+      pm: '01_product_manager',
+      backend: '02_backend_lead',
+      frontend: '03_frontend_lead',
+      db: '04_db_architect',
+      qa: '05_qa_lead',
+      devops: '06_devops_lead',
+      security: '07_security_lead',
+      data: '08_data_engineer',
+      docs: '09_tech_writer',
+      writer: '09_tech_writer',
+      pm2: '10_project_manager',
+    };
+    const allRoleIds = [
+      '01_product_manager',
+      '02_backend_lead',
+      '03_frontend_lead',
+      '04_db_architect',
+      '05_qa_lead',
+      '06_devops_lead',
+      '07_security_lead',
+      '08_data_engineer',
+      '09_tech_writer',
+      '10_project_manager',
+    ];
+    const includedIds = requestedRoles.map(r => roleAliasMap[r] ?? r);
+    return allRoleIds.filter(id => !includedIds.some(inc => id.includes(inc)));
+  }
+
+  // Use scan metadata to filter architecture-specific roles
+  const skipRoles: string[] = [];
+  if (scanResult && !scanResult.context?.architecture?.hasFrontend) {
+    skipRoles.push('03_frontend_lead');
+  }
+  if (scanResult && !scanResult.context?.architecture?.hasDatabase) {
+    skipRoles.push('04_db_architect');
+  }
+  return skipRoles;
+}
+
 // ---------------------------------------------------------------------------
 // Main command
 // ---------------------------------------------------------------------------
 
 export async function graduateCommand(opts: Record<string, unknown>): Promise<void> {
-  const lspDir = path.join(process.cwd(), '.lsp');
+  const targetDir = process.cwd();
+  const dryRun = opts['dryRun'] === true || opts['dry-run'] === true;
+  const skipConfirm = opts['yes'] === true;
+  const rolesFlag = typeof opts['roles'] === 'string' ? opts['roles'] : undefined;
 
-  // 1. Check for .lsp/ directory
-  if (!existsSync(lspDir)) {
+  // 1. Check for .lsp/ directory (search upward from cwd)
+  const lspDir = findLspDir(targetDir);
+  if (!lspDir) {
     console.log('');
-    console.log(chalk.red('  .lsp/ directory not found.'));
-    console.log('');
-    console.log(`  Run ${chalk.cyan('lsp init')} first to generate specs, then graduate.`);
+    console.log(chalk.red("  No .lsp/ directory found. Run 'lsp init' first, or use --dir to specify your project path."));
     console.log('');
     process.exit(1);
   }
 
-  const specsDir = path.join(process.cwd(), 'specs');
+  const specsDir = path.join(targetDir, 'specs');
   const sourceLabel = opts['srs'] ? String(opts['srs']) : '.lsp/spec.md';
+  const projectName = path.basename(targetDir);
 
   console.log('');
   console.log(chalk.bold.cyan('  LightSpec — lsp graduate'));
   console.log(chalk.gray(`  Source: ${lspDir}`));
   console.log(chalk.gray(`  Target: ${specsDir}`));
+  if (dryRun) console.log(chalk.yellow('  Mode:   --dry-run (no files will be written)'));
   console.log('');
 
-  // 2. Read spec content
+  // 2. Load scan result for architecture-based role filtering
+  const scanResult = await loadScanResult(lspDir);
+  const skipRoles = computeSkipRoles(scanResult, rolesFlag);
+
+  if (scanResult && skipRoles.length > 0) {
+    console.log(chalk.dim(`  Scan metadata found: using architecture flags for role filtering`));
+  }
+
+  // 3. Read spec content
   const readSpinner = ora('Reading LSP spec files...').start();
   let specContent: string;
   try {
@@ -146,10 +226,20 @@ export async function graduateCommand(opts: Record<string, unknown>): Promise<vo
     process.exit(1);
   }
 
-  // 3. Create specs/ directory
-  await mkdir(specsDir, { recursive: true });
+  // 4. Create specs/ directory (unless dry-run)
+  if (!dryRun) {
+    await mkdir(specsDir, { recursive: true });
+  }
 
   const mapSpinner = ora('Mapping content to AutoSpec roles...').start();
+
+  // dry-run preview header
+  if (dryRun) {
+    mapSpinner.stop();
+    console.log('');
+    console.log(chalk.bold('  Graduate preview (--dry-run):'));
+    console.log('');
+  }
 
   try {
     // Extract sections for role mapping
@@ -221,7 +311,7 @@ export async function graduateCommand(opts: Record<string, unknown>): Promise<vo
     const techWriter = stubRole(9, 'tech_writer', 'Documentation and developer experience');
     const projectMgr = stubRole(10, 'project_manager', 'Project timeline, risks and delivery');
 
-    // Write all spec files
+    // All spec files with their content
     const specFiles: Array<[string, string]> = [
       ['01_product_manager.md', pm],
       ['02_backend_lead.md', be],
@@ -235,20 +325,67 @@ export async function graduateCommand(opts: Record<string, unknown>): Promise<vo
       ['10_project_manager.md', projectMgr],
     ];
 
+    // Section name mapping for dry-run reporting
+    const sectionMap: Record<string, string> = {
+      '01_product_manager.md': 'Overview',
+      '02_backend_lead.md': 'Technical Design',
+      '03_frontend_lead.md': 'Frontend',
+      '04_db_architect.md': 'Data Model',
+      '05_qa_lead.md': 'Testing',
+    };
+
+    let writtenCount = 0;
+    let skippedCount = 0;
+
     for (const [filename, content] of specFiles) {
+      // Determine the role ID (filename without .md)
+      const roleId = filename.replace('.md', '');
+      const isSkipped = skipRoles.some(skip => roleId.includes(skip) || roleId === skip);
+
+      if (dryRun) {
+        if (isSkipped) {
+          const reason = rolesFlag ? 'not in --roles list' :
+            (roleId.includes('03_frontend') ? 'hasFrontend: false' : 'hasDatabase: false');
+          console.log(`  ${chalk.cyan(filename.padEnd(35))} → ${chalk.yellow(`SKIPPED (${reason})`)}`);
+          skippedCount++;
+        } else {
+          const sectionName = sectionMap[filename];
+          if (sectionName) {
+            const extracted = extractSection(specContent, sectionName);
+            const lineCount = extracted ? extracted.split('\n').length : 0;
+            const status = lineCount > 0
+              ? `EXTRACTED (${lineCount} lines from "${sectionName}" section)`
+              : `FALLBACK (no matching section, using template stub)`;
+            console.log(`  ${chalk.cyan(filename.padEnd(35))} → ${chalk.green(status)}`);
+          } else {
+            console.log(`  ${chalk.cyan(filename.padEnd(35))} → ${chalk.dim('STUB (template placeholder)')}`);
+          }
+        }
+        continue;
+      }
+
+      if (isSkipped) {
+        console.log(chalk.dim(`  Skipping ${filename} (not applicable to this project)`));
+        skippedCount++;
+        continue;
+      }
+
       await writeFile(path.join(specsDir, filename), content, 'utf-8');
+      writtenCount++;
     }
 
-    mapSpinner.succeed('10 role spec files created');
+    if (!dryRun) {
+      mapSpinner.succeed(`${writtenCount} role spec files created${skippedCount > 0 ? ` (${skippedCount} skipped)` : ''}`);
+    }
   } catch (err) {
-    mapSpinner.fail('Role mapping failed');
+    if (!dryRun) mapSpinner.fail('Role mapping failed');
     const message = err instanceof Error ? err.message : String(err);
     console.error(chalk.red(`  Error: ${message}`));
     process.exit(1);
   }
 
-  // 4. Create backlog.md from tasks.md
-  const backlogSpinner = ora('Creating backlog.md from tasks...').start();
+  // 5. Create backlog.md from tasks.md
+  const backlogSpinner = dryRun ? null : ora('Creating backlog.md from tasks...').start();
   try {
     const tasksPath = path.join(lspDir, 'tasks.md');
     let backlogContent: string;
@@ -272,56 +409,96 @@ export async function graduateCommand(opts: Record<string, unknown>): Promise<vo
         `| 1.1 | Define requirements | 🔲 Todo |\n`;
     }
 
-    await writeFile(path.join(specsDir, 'backlog.md'), backlogContent, 'utf-8');
-    backlogSpinner.succeed('backlog.md created');
+    if (dryRun) {
+      console.log(`  ${chalk.cyan('specs/backlog.md'.padEnd(35))} → ${chalk.green('WRITE (from .lsp/tasks.md)')}`);
+    } else {
+      await writeFile(path.join(specsDir, 'backlog.md'), backlogContent, 'utf-8');
+      backlogSpinner?.succeed('backlog.md created');
+    }
   } catch (err) {
-    backlogSpinner.warn('Could not create backlog.md (non-fatal)');
+    backlogSpinner?.warn('Could not create backlog.md (non-fatal)');
     const message = err instanceof Error ? err.message : String(err);
     console.error(chalk.yellow(`  Warning: ${message}`));
   }
 
-  // 5. Create CLAUDE.md
+  // 6. Create CLAUDE.md (with overwrite guard and project name substitution)
+  const claudeMdPath = path.join(targetDir, 'CLAUDE.md');
+
+  const claudeMdContent =
+    `# Claude Code Memory — ${projectName}\n\n` +
+    `> Generated by \`lsp graduate\` on ${TODAY}.\n` +
+    `> Edit this file to add project-specific rules for Claude Code.\n\n` +
+    `## Development Workflow\n\n` +
+    `### Rule 1: Backlog-First\n\nAll changes tracked in \`specs/backlog.md\` before implementation.\n\n` +
+    `### Rule 2: Living Documentation\n\nUpdate \`docs/\` after every feature implementation.\n\n` +
+    `### Rule 3: QA Before Done\n\nNo ticket is done without verification.\n\n` +
+    `## Project Structure\n\n` +
+    `\`\`\`\n` +
+    `specs/                  # AutoSpec role specs (graduated from .lsp/)\n` +
+    `  01_product_manager.md\n` +
+    `  02_backend_lead.md\n` +
+    `  ...\n` +
+    `  backlog.md\n` +
+    `docs/                   # Living documentation\n` +
+    `.lsp/                   # Original LSP output (keep for reference)\n` +
+    `\`\`\`\n\n` +
+    `## Next Steps\n\n` +
+    `1. Review all spec files in \`specs/\` and fill in missing details\n` +
+    `2. Run \`autospec generate <srs>\` to expand stubs (roles 06-10)\n` +
+    `3. Create your first sprint in \`specs/backlog.md\`\n` +
+    `4. Set up \`docs/\` directories for your subsystems\n`;
+
+  if (dryRun) {
+    const claudeExists = existsSync(claudeMdPath);
+    const writeStatus = claudeExists
+      ? `OVERWRITE (project name: "${projectName}", existing file will be replaced)`
+      : `WRITE (project name: "${projectName}")`;
+    console.log(`  ${chalk.cyan('CLAUDE.md'.padEnd(35))} → ${chalk.green(writeStatus)}`);
+    console.log('');
+    console.log(chalk.dim('  (dry-run: no files written)'));
+    console.log('');
+    return;
+  }
+
   const claudeSpinner = ora('Creating CLAUDE.md...').start();
   try {
-    const claudeMd =
-      `# Claude Code Memory — [Project Name]\n\n` +
-      `> Generated by \`lsp graduate\` on ${TODAY}.\n` +
-      `> Edit this file to add project-specific rules for Claude Code.\n\n` +
-      `## Development Workflow\n\n` +
-      `### Rule 1: Backlog-First\n\nAll changes tracked in \`specs/backlog.md\` before implementation.\n\n` +
-      `### Rule 2: Living Documentation\n\nUpdate \`docs/\` after every feature implementation.\n\n` +
-      `### Rule 3: QA Before Done\n\nNo ticket is done without verification.\n\n` +
-      `## Project Structure\n\n` +
-      `\`\`\`\n` +
-      `specs/                  # AutoSpec role specs (graduated from .lsp/)\n` +
-      `  01_product_manager.md\n` +
-      `  02_backend_lead.md\n` +
-      `  ...\n` +
-      `  backlog.md\n` +
-      `docs/                   # Living documentation\n` +
-      `.lsp/                   # Original LSP output (keep for reference)\n` +
-      `\`\`\`\n\n` +
-      `## Next Steps\n\n` +
-      `1. Review all spec files in \`specs/\` and fill in missing details\n` +
-      `2. Run \`autospec generate <srs>\` to expand stubs (roles 06-10)\n` +
-      `3. Create your first sprint in \`specs/backlog.md\`\n` +
-      `4. Set up \`docs/\` directories for your subsystems\n`;
+    let skipClaudeMd = false;
 
-    await writeFile(path.join(process.cwd(), 'CLAUDE.md'), claudeMd, 'utf-8');
-    claudeSpinner.succeed('CLAUDE.md created');
+    // Overwrite guard: check if CLAUDE.md already exists
+    if (existsSync(claudeMdPath) && !skipConfirm) {
+      claudeSpinner.stop();
+      process.stdout.write(chalk.yellow('  CLAUDE.md already exists. Overwrite? [y/N] '));
+      const answer = await new Promise<string>(resolve => {
+        if (!process.stdin.isTTY) {
+          resolve('n');
+          return;
+        }
+        process.stdin.setEncoding('utf8');
+        process.stdin.once('data', (d: Buffer | string) => resolve(d.toString().trim().toLowerCase()));
+      });
+      if (answer !== 'y' && answer !== 'yes') {
+        console.log(chalk.dim('  Skipped CLAUDE.md (use --yes to overwrite)'));
+        skipClaudeMd = true;
+      }
+    }
+
+    if (!skipClaudeMd) {
+      await writeFile(claudeMdPath, claudeMdContent, 'utf-8');
+      claudeSpinner.succeed('CLAUDE.md created');
+    }
   } catch (err) {
     claudeSpinner.warn('Could not create CLAUDE.md (non-fatal)');
     const message = err instanceof Error ? err.message : String(err);
     console.error(chalk.yellow(`  Warning: ${message}`));
   }
 
-  // 6. Print next steps
+  // 7. Print next steps
   console.log('');
   console.log(chalk.bold.green('  Graduation complete!'));
   console.log(chalk.gray('  ' + '─'.repeat(50)));
   console.log('');
   console.log(chalk.bold('  Created:'));
-  console.log(`  ${chalk.cyan('specs/')}                   10 AutoSpec role files`);
+  console.log(`  ${chalk.cyan('specs/')}                   Role spec files`);
   console.log(`  ${chalk.cyan('specs/backlog.md')}         Project backlog`);
   console.log(`  ${chalk.cyan('CLAUDE.md')}                Claude Code memory`);
   console.log('');

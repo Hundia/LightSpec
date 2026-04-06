@@ -5,6 +5,7 @@ import { mkdtemp, rm, writeFile, mkdir, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import os from 'os';
+import type { ScanResult } from '../../src/scanner/types.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -59,12 +60,15 @@ async function makeTmpDir(): Promise<string> {
  * Run graduate logic extracted for testing (without process.cwd() dependency).
  * We replicate the core logic from graduateCommand here to test it independently.
  */
-async function runGraduateInDir(baseDir: string, specContent: string): Promise<void> {
+async function runGraduateInDir(
+  baseDir: string,
+  specContent: string,
+  opts: { scanResult?: ScanResult | null; roles?: string; dryRun?: boolean } = {},
+): Promise<unknown> {
   const lspDir = path.join(baseDir, '.lsp');
-  const specsDir = path.join(baseDir, 'specs');
 
   await mkdir(lspDir, { recursive: true });
-  await mkdir(specsDir, { recursive: true });
+  // Note: do NOT pre-create specs/ — graduateLogic creates it (unless dryRun)
 
   // Write sample spec
   await writeFile(path.join(lspDir, 'spec.md'), specContent, 'utf-8');
@@ -84,7 +88,12 @@ generated_by: lightspec
 
   // Import and use the section extractor logic
   const { graduateLogic } = await import('../helpers/graduate-logic.js');
-  await graduateLogic(baseDir, specContent);
+  return graduateLogic(baseDir, specContent, {
+    scanResult: opts.scanResult,
+    roles: opts.roles,
+    dryRun: opts.dryRun,
+    projectName: path.basename(baseDir),
+  });
 }
 
 afterEach(async () => {
@@ -157,5 +166,114 @@ describe('graduate command logic', () => {
     const backlog = await readFile(path.join(specsDir, 'backlog.md'), 'utf-8');
     expect(backlog).toContain('# Project Backlog');
     expect(backlog).toContain('Graduated from LightSpec');
+  });
+
+  // ── Ticket 41.7: Role Filtering ───────────────────────────────────────────
+
+  it('skips 03_frontend_lead when hasFrontend is false in scan result', async () => {
+    const baseDir = await makeTmpDir();
+    const mockScanResult = {
+      context: {
+        architecture: { hasFrontend: false, hasDatabase: true },
+      },
+    } as unknown as ScanResult;
+
+    await runGraduateInDir(baseDir, SAMPLE_SPEC_MD, { scanResult: mockScanResult });
+
+    const specsDir = path.join(baseDir, 'specs');
+    expect(existsSync(path.join(specsDir, '03_frontend_lead.md')), '03_frontend_lead.md should be skipped').toBe(false);
+    expect(existsSync(path.join(specsDir, '04_db_architect.md')), '04_db_architect.md should exist').toBe(true);
+    expect(existsSync(path.join(specsDir, '01_product_manager.md')), '01_product_manager.md should exist').toBe(true);
+  });
+
+  it('skips 04_db_architect when hasDatabase is false in scan result', async () => {
+    const baseDir = await makeTmpDir();
+    const mockScanResult = {
+      context: {
+        architecture: { hasFrontend: true, hasDatabase: false },
+      },
+    } as unknown as ScanResult;
+
+    await runGraduateInDir(baseDir, SAMPLE_SPEC_MD, { scanResult: mockScanResult });
+
+    const specsDir = path.join(baseDir, 'specs');
+    expect(existsSync(path.join(specsDir, '04_db_architect.md')), '04_db_architect.md should be skipped').toBe(false);
+    expect(existsSync(path.join(specsDir, '03_frontend_lead.md')), '03_frontend_lead.md should exist').toBe(true);
+  });
+
+  it('skips both frontend and db roles for CLI-only project (hasFrontend:false, hasDatabase:false)', async () => {
+    const baseDir = await makeTmpDir();
+    const mockScanResult = {
+      context: {
+        architecture: { hasFrontend: false, hasDatabase: false },
+      },
+    } as unknown as ScanResult;
+
+    await runGraduateInDir(baseDir, SAMPLE_SPEC_MD, { scanResult: mockScanResult });
+
+    const specsDir = path.join(baseDir, 'specs');
+    expect(existsSync(path.join(specsDir, '03_frontend_lead.md'))).toBe(false);
+    expect(existsSync(path.join(specsDir, '04_db_architect.md'))).toBe(false);
+    // PM, Backend, QA should still be created
+    expect(existsSync(path.join(specsDir, '01_product_manager.md'))).toBe(true);
+    expect(existsSync(path.join(specsDir, '02_backend_lead.md'))).toBe(true);
+    expect(existsSync(path.join(specsDir, '05_qa_lead.md'))).toBe(true);
+  });
+
+  // ── Ticket 41.7: Project Name Substitution ────────────────────────────────
+
+  it('CLAUDE.md contains actual project directory name (not [Project Name])', async () => {
+    const baseDir = await makeTmpDir();
+    await runGraduateInDir(baseDir, SAMPLE_SPEC_MD);
+
+    const claudeMd = await readFile(path.join(baseDir, 'CLAUDE.md'), 'utf-8');
+    // Must NOT contain the literal placeholder
+    expect(claudeMd).not.toContain('[Project Name]');
+    // Must contain the actual directory name
+    const projectName = path.basename(baseDir);
+    expect(claudeMd).toContain(projectName);
+    expect(claudeMd).toContain(`Claude Code Memory — ${projectName}`);
+  });
+
+  // ── Ticket 41.7: Dry Run ──────────────────────────────────────────────────
+
+  it('--dry-run: no files are written, preview array is returned', async () => {
+    const baseDir = await makeTmpDir();
+    const preview = await runGraduateInDir(baseDir, SAMPLE_SPEC_MD, { dryRun: true });
+
+    // No files should have been created
+    expect(existsSync(path.join(baseDir, 'CLAUDE.md')), 'CLAUDE.md must not be written in dry-run').toBe(false);
+    expect(existsSync(path.join(baseDir, 'specs')), 'specs/ must not be created in dry-run').toBe(false);
+
+    // Preview array should contain entries
+    expect(Array.isArray(preview)).toBe(true);
+    const items = preview as Array<{ file: string; action: string }>;
+    expect(items.length).toBeGreaterThan(0);
+  });
+
+  it('--dry-run: preview contains EXTRACTED and SKIPPED actions', async () => {
+    const baseDir = await makeTmpDir();
+    const mockScanResult = {
+      context: {
+        architecture: { hasFrontend: false, hasDatabase: false },
+      },
+    } as unknown as ScanResult;
+
+    const preview = await runGraduateInDir(baseDir, SAMPLE_SPEC_MD, {
+      dryRun: true,
+      scanResult: mockScanResult,
+    });
+
+    const items = preview as Array<{ file: string; action: string }>;
+    const actions = items.map(i => i.action);
+
+    expect(actions).toContain('EXTRACTED');
+    expect(actions).toContain('SKIPPED');
+    expect(actions).toContain('WRITE'); // for backlog.md and CLAUDE.md
+
+    // Verify skipped files
+    const skipped = items.filter(i => i.action === 'SKIPPED').map(i => i.file);
+    expect(skipped).toContain('03_frontend_lead.md');
+    expect(skipped).toContain('04_db_architect.md');
   });
 });

@@ -1,0 +1,54 @@
+# Sprint 41 Candidate Tickets — From Sprint 40 DX Study
+
+*Generated from Sprint 40 DX Usability Study findings (2026-04-05)*
+*Total: 35 pts (8 tickets)*
+
+---
+
+## Sprint 41: First-Run to First-Value — Unblock the Pipeline (~35 pts)
+
+**Theme:** Remove every barrier between `npm install` and a working spec-driven workflow
+**Status:** 🔲 Planned
+**Motivation:** Sprint 40 DX study (NPS: -67). Top blockers: (1) no LightSpec quick-start or provider setup guide, (2) LSS output does not connect to the skill layer, (3) scanner presents false confidence on polyglot projects. Fixing these three issues addresses the root cause of detractor scores from both junior and senior personas.
+
+### Phase 1: First-Run Experience — PARALLEL (10 pts)
+
+These tickets have no dependencies and address the first 5 minutes of a new user's experience.
+
+| ID | Ticket | Description | Owner | Model | Points | Status | Deps |
+|----|--------|-------------|-------|-------|--------|--------|------|
+| 41.1 | LightSpec standalone quick-start document | Create `LIGHTSPEC_QUICKSTART.md` as the canonical entry point for new users. Must include: (1) `npm install -g lightspec` as first command, (2) LightSpec vs AutoSpec decision criteria (solo/small/brownfield -> LightSpec; team/SRS/full ceremony -> AutoSpec), (3) provider setup table covering Claude Code (no key needed), Anthropic API (free credit link), Gemini API (free tier link) with cost context, (4) three-command walkthrough (`lsp scan .`, `lsp init .`, `lsp status`), (5) complete CLI flag reference for all commands. Must NOT reference AutoSpec workflows, role specs, or sprint skills. Cross-link from main QUICKSTART.md. Include provider error recovery instructions that will be reproduced verbatim in `init.ts` error output. **Study evidence:** Alex sev-5 blocker ("Couldn't find any install command"); researcher Category 1+2 consensus; both reviewers Priority #1. Verify: a developer with no prior LightSpec exposure can go from zero to generated spec following only this document. | Docs | sonnet | 3 | 🔲 | — |
+| 41.2 | Implement Go route extraction in `detect-routes.ts` | Add `extractGoRoutes()` function to `cli/src/scanner/detect-routes.ts` with a `**/*.go` file glob. Implement regex patterns for Gin (`r.GET("/path", handler)`), Echo (`e.GET("/path", handler)`), Fiber (`app.Get("/path", handler)`), and Chi (`r.Get("/path", handler)`) as documented in `docs/lss/03_scanner.md`. Update `detectRoutes()` framework resolution chain to include Go frameworks. Add 3 integration tests: minimal Gin file with 3 routes, Echo file with 2 routes, and a Go project with no HTTP framework (should return empty routes gracefully). Update `hasApi` detection in `detect-architecture.ts` to recognize `main.go` at any depth (not just project root) and common Go directory patterns (`internal/http/`, `pkg/api/`, `cmd/server/`). **Study evidence:** Jordan sev-4 source-verified ("documented feature that is not implemented"); both reviewers identified as critical trust issue. Verify: `lsp scan` on a Go+Gin project with 3 routes returns `routes.length === 3` and `hasApi: true`. | CLI | sonnet | 5 | 🔲 | — |
+| 41.3 | `lsp done <id>` command + `lsp status` path robustness | Two task management improvements. (1) Add `lsp done <id>` command that reads `.lsp/tasks.md`, finds task row by ID, sets Done column to `[x]`, writes file back. Add `lsp undone <id>` as inverse. Validate task ID exists; print confirmation with task description; error helpfully if task already done or not found. (2) Fix `lsp status`, `lsp done`, and `lsp graduate` to search upward from `process.cwd()` to filesystem root looking for `.lsp/` directory, so running from a subdirectory works. Add `--dir <path>` flag as explicit override. **Study evidence:** Alex sev-2 + Jordan sev-2 ("no CLI command like `lsp done 3`"); researcher Category 6 ("most universally noted gap"); both reviewers ranked as Priority #6. Verify: `lsp done 3` marks task #3 done; running `lsp status` from `src/` subdirectory succeeds. | CLI | haiku | 2 | 🔲 | — |
+
+### Phase 2: Pipeline Integration (13 pts)
+
+These tickets connect the LSS output to the skill layer and add scanner trust signals. Depends on Phase 1 for Go route work.
+
+| ID | Ticket | Description | Owner | Model | Points | Status | Deps |
+|----|--------|-------------|-------|-------|--------|--------|------|
+| 41.4 | Scanner confidence signals in `lsp scan` output | Add a "Detection Confidence" section to `lsp scan` output (both pretty-print and `--json` modes) that surfaces what the scanner could not detect. Specific additions: (1) if `routes.length === 0` and `techStack.frameworks` includes a Go/Rust/Ruby framework, print "Route extraction not supported for [language] -- consider using --srs to provide route documentation"; (2) if `hasApi: false`, list the directory names that would trigger detection; (3) if `architecture.pattern === 'unknown'`, explain what structures trigger pattern detection; (4) if line count used sampling heuristic, note "Line count is estimated from sampling." Add `confidence` object to `--json` output with per-signal levels (HIGH/LOW/NOT_SUPPORTED). No scoring logic changes -- output presentation only. **Study evidence:** Sam sev-3 ("It doesn't print what it couldn't detect"); Jordan sev-4 ("The tool shows confidence without surfacing the gap"); researcher Insight 3; both reviewers Priority #4. Verify: Go project with gin framework shows route confidence warning; TypeScript project with `routes/` directory shows no warnings. | CLI | sonnet | 5 | 🔲 | 41.2 |
+| 41.5 | `lsp init-backlog` bridge command | Add `lsp init-backlog` CLI command that reads `.lsp/tasks.md` and creates a minimal `specs/backlog.md` in AutoSpec Sprint 1 format. Each task becomes a backlog ticket with: ID (1.N), title from task description, Status 🔲, Owner=Fullstack, Model=sonnet, Points estimated from time column (30m->1pt, 1h->2pts, 2h->3pts, 4h->5pts). Create `specs/` directory if it does not exist. Error helpfully if `.lsp/tasks.md` not found ("Run `lsp init` first"). Do not require or trigger graduation. Add a note to `lsp init` success output: "Ready for AutoSpec skills? Run `lsp init-backlog` to create specs/backlog.md." Document in LIGHTSPEC_QUICKSTART.md as optional step 4. **Study evidence:** Sam sev-4 ("I ended up manually reformatting tasks into specs/backlog.md"); researcher Insight 2 ("structural handshake failure"); both reviewers Priority #2-3. Verify: `/execute-ticket` on a ticket from the generated backlog.md succeeds without manual editing. | CLI | sonnet | 5 | 🔲 | — |
+| 41.6 | Provider error messages with recovery guidance | Update `init.ts` provider resolution failure to print actionable recovery instructions instead of bare "No LLM provider available" + raw error. New error output format: (1) "No LLM provider found. Set up one of these:" (2) table listing: `claude` CLI (link to install), `ANTHROPIC_API_KEY` (link to console, note free credit), `GEMINI_API_KEY` (link to AI Studio, note free tier). (3) "Then re-run: lsp init ." Also: move provider resolution to BEFORE the confirmation prompt so users see which provider will be used before saying Y. Add `process.stdin.isTTY` check -- if not a TTY and `--yes` not passed, exit with clear message "Non-interactive mode detected. Use --yes flag." instead of hanging on readline. **Study evidence:** Alex sev-5 ("error message gives no actionable recovery path"); Jordan ("readline blocks indefinitely in CI"); Reviewer 1 adoption risk "H likelihood, H impact." Verify: running `lsp init` without any provider shows the recovery table; running in a pipe without `--yes` exits cleanly. | CLI | haiku | 3 | 🔲 | — |
+
+### Phase 3: Graduate Quality (10 pts)
+
+Improves the graduation output so the upgrade framing matches the actual output quality.
+
+| ID | Ticket | Description | Owner | Model | Points | Status | Deps |
+|----|--------|-------------|-------|-------|--------|--------|------|
+| 41.7 | `lsp graduate` project-type-aware role filtering + quality fixes | Four targeted improvements to `graduate.ts`: (1) **Role filtering:** Before generating role spec files, read `.lsp/` scan metadata. Skip `03_frontend_lead.md` if `hasFrontend: false`. Skip `04_db_architect.md` if `hasDatabase: false`. Add `--roles` flag for explicit selection (`lsp graduate --roles=pm,backend,qa`). (2) **CLAUDE.md placeholder fix:** Replace `[Project Name]` with `path.basename(process.cwd())` -- a one-line fix that eliminates the most universal polish signal. (3) **CLAUDE.md overwrite guard:** If `CLAUDE.md` already exists, prompt "CLAUDE.md already exists. Overwrite? [y/N]" before writing. Respect `--yes` flag. (4) **Dry-run mode:** Add `lsp graduate --dry-run` that prints extraction plan per role: "EXTRACTED (8 lines from 'Technical Design' heading)" / "FALLBACK (no matching heading found)" / "SKIPPED (hasFrontend: false)" without writing any files. **Study evidence:** All 3 personas rated graduation negatively (sev-3 each); researcher Insight 4 ("four independent failure modes"); both reviewers Priority #5. Verify: a CLI-only project (no frontend, no DB) generates exactly PM + Backend + QA role specs; `--dry-run` shows extraction confidence per role; existing CLAUDE.md not overwritten without confirmation. | CLI | sonnet | 5 | 🔲 | — |
+| 41.8 | Sprint 41 QA + sprint close | Verify all 7 implementation tickets. Run `cd cli && npm run build && npm test`. Verify LIGHTSPEC_QUICKSTART.md end-to-end walkthrough. Verify `lsp scan` on Go fixture shows confidence warnings. Verify `lsp done` works from subdirectory. Verify `lsp init-backlog` output is compatible with `/execute-ticket`. Update `specs/backlog.md` statuses. Create `sprints/sprint-41/summary.md`. Update viewer backlog data. | QA | haiku | 2 | 🔲 | 41.1-41.7 |
+
+### Definition of Done
+- [ ] `LIGHTSPEC_QUICKSTART.md` exists and a new user can follow it to generated spec without reading any other document
+- [ ] `lsp scan` on a Go+Gin project extracts routes and reports `hasApi: true`
+- [ ] `lsp scan` on a Go project shows "Detection Confidence" section with route extraction status
+- [ ] `lsp done 3` marks task #3 complete in `.lsp/tasks.md`; `lsp status` from a subdirectory works
+- [ ] `lsp init-backlog` creates `specs/backlog.md` from `.lsp/tasks.md` in valid Sprint 1 format
+- [ ] `lsp init` without provider shows actionable recovery table with provider setup links
+- [ ] `lsp init` in non-TTY context exits cleanly instead of hanging
+- [ ] `lsp graduate --dry-run` shows extraction plan; `lsp graduate` on a CLI-only project skips frontend/DB role files
+- [ ] Generated CLAUDE.md contains actual project name, not `[Project Name]`
+- [ ] All CLI tests pass (`cd cli && npm test`)
+- [ ] NPS-blocking issues from Sprint 40 study are addressed: junior can complete first run, senior sees honest scanner output, mid-level can reach skill layer without manual reformatting

@@ -86,4 +86,48 @@ export const sprintVisualizations: Record<string, SprintVisualization> = {
       ],
     },
   },
+  '42': {
+    sprintId: '42',
+    title: 'Launch Readiness — Marketing Page + Content Pipeline',
+    planning: {
+      overview: 'Build a Marketing Hub page in the viewer at /#/marketing: a living launch dashboard with Next Action card, KPI row, and 4 tabs (Posts / Articles / Milestones / Channels). Backed by marketing.ts with 26 typed seed items — 5 LinkedIn posts with real hooks, 5 articles, 8 launch milestones, 6 channels — all wired with blockedBy dependency chains.',
+      architectureNotes: 'Phase 1: marketing.ts interfaces + seed. Phase 2: 4 card components (PostCard, ArticleCard, MilestoneCard, ChannelRow) + KpiRow stub. Phase 3: MarketingPage assembly — shell, NextActionCard logic, tab wiring. Phase 4: viewer infrastructure (resolveBlockers helper, backlog.ts, sidebar nav). Phase 5: QA + docs + sprint close.',
+      flowSteps: [
+        { id: 'data', label: 'marketing.ts', description: 'Types + 26-item seed with blockedBy chains', type: 'start' as const },
+        { id: 'cards', label: 'Card Components', description: 'PostCard, ArticleCard, MilestoneCard, ChannelRow', type: 'process' as const },
+        { id: 'page', label: 'MarketingPage', description: 'Tab shell + KpiRow + NextActionCard', type: 'process' as const },
+        { id: 'wire', label: 'Tab Wiring', description: 'Posts, Articles, Milestones, Channels tabs', type: 'process' as const },
+        { id: 'infra', label: 'Infrastructure', description: 'Route, sidebar nav, resolveBlockers()', type: 'process' as const },
+        { id: 'qa', label: 'QA + Docs', description: 'Build verification + docs/viewer update', type: 'end' as const },
+      ],
+      flowConnections: [
+        { from: 'data', to: 'cards', label: 'types' },
+        { from: 'data', to: 'page', label: 'stub' },
+        { from: 'cards', to: 'wire', label: 'components' },
+        { from: 'page', to: 'wire', label: 'shell' },
+        { from: 'wire', to: 'infra', label: 'complete page' },
+        { from: 'infra', to: 'qa', label: 'build' },
+      ],
+    },
+    retrospective: {
+      completedAt: '2026-04-06',
+      highlights: [
+        'marketing.ts: 26-item typed seed with cross-collection blockedBy dependency chains',
+        'NextActionCard resolves full dependency graph and surfaces the single most important action',
+        '"Set Live (session)" toggle: React useState only — non-persistent by design',
+        'docs/viewer/01_overview.md updated to 11 pages — CLAUDE.md Rule 2 satisfied',
+        'Build: ✓ 3.50s, zero TypeScript errors',
+      ],
+      challenges: [
+        'resolveBlockers() spans all 3 collections (posts, articles, milestones) — cross-collection dependency resolution',
+      ],
+      keyMetrics: [
+        { label: 'Tickets Delivered', value: 19 },
+        { label: 'Points Delivered', value: 45 },
+        { label: 'New Files', value: 9 },
+        { label: 'Seed Items', value: 26 },
+        { label: 'Build Time (s)', value: 3.5 },
+      ],
+    },
+  },
 }

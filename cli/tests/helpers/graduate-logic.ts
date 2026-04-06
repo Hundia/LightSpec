@@ -5,6 +5,7 @@
 import path from 'path';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
+import type { ScanResult } from '../../src/scanner/types.js';
 
 const TODAY = new Date().toISOString().split('T')[0];
 
@@ -62,12 +63,84 @@ function stubRole(roleNumber: number, roleName: string, description: string): st
   );
 }
 
-export async function graduateLogic(baseDir: string, specContent: string): Promise<void> {
+function computeSkipRoles(
+  scanResult: ScanResult | null | undefined,
+  rolesFlag: string | undefined,
+): string[] {
+  if (rolesFlag) {
+    const requestedRoles = rolesFlag.split(',').map(r => r.trim().toLowerCase());
+    const roleAliasMap: Record<string, string> = {
+      pm: '01_product_manager',
+      backend: '02_backend_lead',
+      frontend: '03_frontend_lead',
+      db: '04_db_architect',
+      qa: '05_qa_lead',
+      devops: '06_devops_lead',
+      security: '07_security_lead',
+      data: '08_data_engineer',
+      docs: '09_tech_writer',
+      writer: '09_tech_writer',
+    };
+    const allRoleIds = [
+      '01_product_manager',
+      '02_backend_lead',
+      '03_frontend_lead',
+      '04_db_architect',
+      '05_qa_lead',
+      '06_devops_lead',
+      '07_security_lead',
+      '08_data_engineer',
+      '09_tech_writer',
+      '10_project_manager',
+    ];
+    const includedIds = requestedRoles.map(r => roleAliasMap[r] ?? r);
+    return allRoleIds.filter(id => !includedIds.some(inc => id.includes(inc)));
+  }
+
+  const skipRoles: string[] = [];
+  if (scanResult && !scanResult.context?.architecture?.hasFrontend) {
+    skipRoles.push('03_frontend_lead');
+  }
+  if (scanResult && !scanResult.context?.architecture?.hasDatabase) {
+    skipRoles.push('04_db_architect');
+  }
+  return skipRoles;
+}
+
+export interface GraduateOpts {
+  /** A mock/partial ScanResult to drive role filtering */
+  scanResult?: ScanResult | null;
+  /** Comma-separated roles to include */
+  roles?: string;
+  /** If true, don't write any files — return a preview array instead */
+  dryRun?: boolean;
+  /** Project name to embed in CLAUDE.md (defaults to basename of baseDir) */
+  projectName?: string;
+}
+
+export interface DryRunPreview {
+  file: string;
+  action: 'WRITE' | 'EXTRACTED' | 'STUB' | 'SKIPPED';
+  detail?: string;
+}
+
+export async function graduateLogic(
+  baseDir: string,
+  specContent: string,
+  opts: GraduateOpts = {},
+): Promise<DryRunPreview[] | void> {
   const specsDir = path.join(baseDir, 'specs');
   const lspDir = path.join(baseDir, '.lsp');
   const sourceLabel = '.lsp/spec.md';
+  const projectName = opts.projectName ?? path.basename(baseDir);
+  const dryRun = opts.dryRun ?? false;
+  const skipRoles = computeSkipRoles(opts.scanResult ?? null, opts.roles);
 
-  await mkdir(specsDir, { recursive: true });
+  const preview: DryRunPreview[] = [];
+
+  if (!dryRun) {
+    await mkdir(specsDir, { recursive: true });
+  }
 
   const overviewSection =
     extractSection(specContent, 'Overview') ||
@@ -127,32 +200,73 @@ export async function graduateLogic(baseDir: string, specContent: string): Promi
     ['10_project_manager.md', stubRole(10, 'project_manager', 'Project timeline, risks and delivery')],
   ];
 
+  const sectionMap: Record<string, string> = {
+    '01_product_manager.md': 'Overview',
+    '02_backend_lead.md': 'Technical Design',
+    '03_frontend_lead.md': 'Frontend',
+    '04_db_architect.md': 'Data Model',
+    '05_qa_lead.md': 'Testing',
+  };
+
   for (const [filename, content] of specFiles) {
-    await writeFile(path.join(specsDir, filename), content, 'utf-8');
+    const roleId = filename.replace('.md', '');
+    const isSkipped = skipRoles.some(skip => roleId.includes(skip) || roleId === skip);
+
+    if (isSkipped) {
+      preview.push({ file: filename, action: 'SKIPPED', detail: 'role filtered out' });
+      continue; // skip write whether dry-run or not
+    }
+
+    const sectionName = sectionMap[filename];
+    if (sectionName) {
+      const extracted = extractSection(specContent, sectionName);
+      const lineCount = extracted ? extracted.split('\n').length : 0;
+      if (lineCount > 0) {
+        preview.push({ file: filename, action: 'EXTRACTED', detail: `${lineCount} lines from "${sectionName}"` });
+      } else {
+        preview.push({ file: filename, action: 'STUB', detail: 'no matching section found' });
+      }
+    } else {
+      preview.push({ file: filename, action: 'STUB', detail: 'template placeholder' });
+    }
+
+    if (!dryRun) {
+      await writeFile(path.join(specsDir, filename), content, 'utf-8');
+    }
   }
 
-  // Create backlog.md
-  const tasksPath = path.join(lspDir, 'tasks.md');
-  let backlogContent =
-    `# Project Backlog\n\n` +
-    `> Graduated from LightSpec on ${TODAY}.\n\n` +
-    `## Sprint 1\n\n`;
+  // backlog.md
+  if (!dryRun) {
+    const tasksPath = path.join(lspDir, 'tasks.md');
+    let backlogContent =
+      `# Project Backlog\n\n` +
+      `> Graduated from LightSpec on ${TODAY}.\n\n` +
+      `## Sprint 1\n\n`;
 
-  if (existsSync(tasksPath)) {
-    const tasksContent = await readFile(tasksPath, 'utf-8');
-    backlogContent += tasksContent;
+    if (existsSync(tasksPath)) {
+      const tasksContent = await readFile(tasksPath, 'utf-8');
+      backlogContent += tasksContent;
+    }
+
+    await writeFile(path.join(specsDir, 'backlog.md'), backlogContent, 'utf-8');
+  } else {
+    preview.push({ file: 'specs/backlog.md', action: 'WRITE', detail: 'from .lsp/tasks.md' });
   }
 
-  await writeFile(path.join(specsDir, 'backlog.md'), backlogContent, 'utf-8');
-
-  // Create CLAUDE.md
-  const claudeMd =
-    `# Claude Code Memory — [Project Name]\n\n` +
+  // CLAUDE.md — with project name substitution (no [Project Name] placeholder)
+  const claudeMdContent =
+    `# Claude Code Memory — ${projectName}\n\n` +
     `> Generated by \`lsp graduate\` on ${TODAY}.\n\n` +
     `## Development Workflow\n\n` +
     `All changes tracked in \`specs/\`.\n\n` +
     `## Project Structure\n\n` +
     `\`\`\`\nspecs/\n.lsp/\n\`\`\`\n`;
 
-  await writeFile(path.join(baseDir, 'CLAUDE.md'), claudeMd, 'utf-8');
+  if (!dryRun) {
+    await writeFile(path.join(baseDir, 'CLAUDE.md'), claudeMdContent, 'utf-8');
+  } else {
+    preview.push({ file: 'CLAUDE.md', action: 'WRITE', detail: `project name: "${projectName}"` });
+  }
+
+  if (dryRun) return preview;
 }

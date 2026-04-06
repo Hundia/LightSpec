@@ -90,6 +90,47 @@ export const backlogData: Sprint[] = [
     ]
   },
   {
+    number: '40',
+    name: 'Sprint 40',
+    theme: 'DX Usability Study — Developer Experience Research',
+    status: 'done',
+    totalPoints: 38,
+    tickets: [
+      // Wave 1: Persona Trials
+      { id: '40.1', title: 'Persona A: Junior developer trial', owner: 'Research', points: 5, status: 'done', dependencies: [] },
+      { id: '40.2', title: 'Persona B: Mid-level developer trial', owner: 'Research', points: 5, status: 'done', dependencies: [] },
+      { id: '40.3', title: 'Persona C: Senior developer trial', owner: 'Research', points: 5, status: 'done', dependencies: [] },
+      // Wave 2: Research Analysis
+      { id: '40.4', title: 'Experience Researcher synthesis', owner: 'Research', points: 5, status: 'done', dependencies: ['40.1', '40.2', '40.3'] },
+      { id: '40.5', title: 'Expert Review 1: DX Tooling Specialist', owner: 'Research', points: 3, status: 'done', dependencies: ['40.4'] },
+      { id: '40.6', title: 'Expert Review 2: SDD Methodology Expert', owner: 'Research', points: 3, status: 'done', dependencies: ['40.4'] },
+      // Wave 3: Synthesis + Sprint Close
+      { id: '40.7', title: 'PM synthesis + final report', owner: 'PM', points: 8, status: 'done', dependencies: ['40.5', '40.6'] },
+      { id: '40.8', title: 'QA verification', owner: 'QA', points: 2, status: 'done', dependencies: ['40.7'] },
+      { id: '40.9', title: 'Sprint close', owner: 'PM', points: 2, status: 'done', dependencies: ['40.8'] },
+    ]
+  },
+  {
+    number: '41',
+    name: 'Sprint 41',
+    theme: 'First-Run to First-Value — Unblock the Pipeline',
+    status: 'done',
+    totalPoints: 35,
+    tickets: [
+      // Phase 1: First-Run Experience
+      { id: '41.1', title: 'LightSpec standalone quick-start document', owner: 'Docs', points: 3, status: 'done', dependencies: [] },
+      { id: '41.2', title: 'Go route extraction in detect-routes.ts', owner: 'CLI', points: 5, status: 'done', dependencies: [] },
+      { id: '41.3', title: 'lsp done command + lsp status path robustness', owner: 'CLI', points: 2, status: 'done', dependencies: [] },
+      // Phase 2: Pipeline Integration
+      { id: '41.4', title: 'Scanner confidence signals in lsp scan output', owner: 'CLI', points: 5, status: 'done', dependencies: ['41.2'] },
+      { id: '41.5', title: 'lsp init-backlog bridge command', owner: 'CLI', points: 5, status: 'done', dependencies: [] },
+      { id: '41.6', title: 'Provider error messages with recovery guidance', owner: 'CLI', points: 3, status: 'done', dependencies: [] },
+      // Phase 3: Graduate Quality
+      { id: '41.7', title: 'lsp graduate role filtering + quality fixes', owner: 'CLI', points: 5, status: 'done', dependencies: [] },
+      { id: '41.8', title: 'Sprint 41 QA + sprint close', owner: 'QA', points: 2, status: 'done', dependencies: ['41.1', '41.2', '41.3', '41.4', '41.5', '41.6', '41.7'] },
+    ]
+  },
+  {
     number: '39',
     name: 'Sprint 39',
     theme: "Developer's Guide — Task Flow API + Interactive Tutorial",
@@ -116,6 +157,39 @@ export const backlogData: Sprint[] = [
       { id: '39.14', title: 'Wire all 12 steps into GuidePage registry, chapter sidebar complete', owner: 'Frontend', points: 3, status: 'todo', dependencies: ['39.9', '39.10', '39.11', '39.12'] },
       { id: '39.15', title: 'GitHub Actions update: guide build + nest guide/dist at presentation/dist/guide/', owner: 'DevOps', points: 3, status: 'todo', dependencies: ['39.5'] },
       { id: '39.16', title: 'Final QA: all builds + 20 e2e tests + naming checks + sprint-39 summary', owner: 'QA', points: 2, status: 'todo', dependencies: ['39.14', '39.15'] },
+    ]
+  },
+  {
+    number: '42',
+    name: 'Sprint 42',
+    theme: 'Launch Readiness — Marketing Page + Content Pipeline',
+    status: 'done',
+    totalPoints: 45,
+    tickets: [
+      // Phase 1: Data Foundation
+      { id: '42.1', title: 'marketing.ts — interfaces + stub seed', owner: 'Frontend', points: 3, status: 'done', dependencies: [] },
+      { id: '42.2', title: 'marketing.ts — full 26-item seed content', owner: 'Frontend', points: 2, status: 'done', dependencies: ['42.1'] },
+      // Phase 2: Card Components
+      { id: '42.3', title: 'PostCard.tsx — LinkedIn post card', owner: 'Frontend', points: 3, status: 'done', dependencies: ['42.1'] },
+      { id: '42.4', title: 'ArticleCard.tsx — article card', owner: 'Frontend', points: 3, status: 'done', dependencies: ['42.1'] },
+      { id: '42.5', title: 'MilestoneCard.tsx — launch milestone card', owner: 'Frontend', points: 2, status: 'done', dependencies: ['42.1'] },
+      { id: '42.6', title: 'ChannelRow.tsx — channel table row', owner: 'Frontend', points: 2, status: 'done', dependencies: ['42.1'] },
+      { id: '42.7', title: 'KpiRow.tsx + NextActionCard stub + card visual QA', owner: 'QA', points: 3, status: 'done', dependencies: ['42.3', '42.4', '42.5', '42.6'] },
+      // Phase 3: Page Assembly
+      { id: '42.8', title: 'MarketingPage.tsx — page shell + route + launchLive toggle', owner: 'Frontend', points: 3, status: 'done', dependencies: ['42.1'] },
+      { id: '42.9', title: 'NextActionCard.tsx — full blockedBy resolution algorithm', owner: 'Frontend', points: 2, status: 'done', dependencies: ['42.1'] },
+      { id: '42.10', title: 'Wire Posts tab — PostCard grid + filter pills', owner: 'Frontend', points: 3, status: 'done', dependencies: ['42.7', '42.8'] },
+      { id: '42.11', title: 'Wire Articles + Milestones tabs', owner: 'Frontend', points: 2, status: 'done', dependencies: ['42.7', '42.8'] },
+      { id: '42.12', title: 'Wire Channels tab + KpiRow reactivity', owner: 'Frontend', points: 2, status: 'done', dependencies: ['42.7', '42.8'] },
+      // Phase 4: Viewer Infrastructure
+      { id: '42.13', title: 'marketing.ts finalize + resolveBlockers() export', owner: 'Frontend', points: 3, status: 'done', dependencies: ['42.2', '42.12'] },
+      { id: '42.14', title: 'backlog.ts — Sprint 42 entry (19 tickets, 45 pts)', owner: 'Frontend', points: 2, status: 'done', dependencies: ['42.1'] },
+      { id: '42.15', title: 'Sidebar nav entry — Marketing + TrendingUp icon', owner: 'Frontend', points: 2, status: 'done', dependencies: ['42.8'] },
+      // Phase 5: QA + Close
+      { id: '42.16', title: 'Integration QA — all 7 deliverables', owner: 'QA', points: 3, status: 'done', dependencies: ['42.8', '42.9', '42.10', '42.11', '42.12', '42.13', '42.14', '42.15'] },
+      { id: '42.17', title: 'Viewer build verification + visual smoke test', owner: 'QA', points: 2, status: 'done', dependencies: ['42.16'] },
+      { id: '42.18', title: 'Sprint close + sprints/sprint-42/summary.md', owner: 'PM', points: 2, status: 'done', dependencies: ['42.17'] },
+      { id: '42.19', title: 'Update docs/viewer/01_overview.md (pages 11 total, routing, data layer)', owner: 'Docs', points: 1, status: 'done', dependencies: ['42.13'] },
     ]
   }
 ]

@@ -11,6 +11,7 @@ import { SprintsListPage } from './pages/SprintsListPage'
 import { QuickStartPage } from './pages/QuickStartPage'
 import { LspPage } from './pages/LspPage'
 import PresentationPage from './pages/PresentationPage'
+import { MarketingPage } from './pages/MarketingPage'
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/quickstart" element={<QuickStartPage />} />
           <Route path="/lsp" element={<LspPage />} />
           <Route path="/presentation" element={<PresentationPage />} />
+          <Route path="/marketing" element={<MarketingPage />} />
         </Routes>
       </Layout>
     </HashRouter>

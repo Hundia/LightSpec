@@ -1,8 +1,12 @@
-# Claude Code Memory — LightSpec
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## About This Project
 
 LightSpec is a lightweight Spec-Driven Development CLI tool. **This project develops itself using AutoSpec's SDD methodology.** Use `/sprint-run`, `/execute-ticket`, `/sprint-status` etc. in Claude Code.
+
+New users: see `LIGHTSPEC_QUICKSTART.md` for the end-to-end getting-started guide.
 
 ---
 
@@ -60,7 +64,7 @@ This project uses **Opus 4.6 as Orchestrator + Sonnet 4.6 as Sprint Agents**:
 
 ```
 /opt/LightSpec/
-├── .claude/commands/       # 10 SDD skill files
+├── .claude/commands/       # SDD skill files
 ├── specs/                  # Role spec files (01-10) + backlog.md
 ├── agents/                 # Sprint briefing files (sprint-X-brief.md)
 ├── sprints/                # Sprint summaries (sprint-X/summary.md)
@@ -71,50 +75,91 @@ This project uses **Opus 4.6 as Orchestrator + Sonnet 4.6 as Sprint Agents**:
 │   └── deployment/         # CI/CD + GitHub Pages
 ├── cli/                    # CLI tool source (TypeScript + tsup)
 │   ├── src/
-│   │   ├── scanner/        # 5 detection modules
+│   │   ├── scanner/        # Detection modules (stack, arch, routes, tests, docs, complexity)
 │   │   ├── pipeline/       # depth-router, generate-spec, task-extractor
-│   │   ├── commands/       # init, scan, status, graduate
-│   │   ├── providers/      # anthropic, claude-code, gemini
-│   │   └── prompts/        # 6 Handlebars templates
-│   └── tests/              # Unit, integration, E2E tests
+│   │   ├── commands/       # init, scan, status, graduate, done, init-backlog
+│   │   ├── providers/      # anthropic, claude-code, gemini + resolver
+│   │   └── prompts/        # 6 Handlebars templates (.hbs)
+│   └── tests/              # Unit (scanner/, pipeline/, providers/), commands/, integration/
 ├── presentation/           # React 18 + Framer Motion landing + slide deck
-│   └── src/
-│       ├── components/
-│       │   ├── landing/    # 8 landing page sections
-│       │   ├── slides/     # 16 slide components
-│       │   └── backgrounds/ # Animated background effects
-│       └── data/           # slides-en.ts, slides-he.ts, landing-en.ts, landing-he.ts
-├── viewer/                 # React 18 + Tailwind warm palette (10 pages)
-│   └── src/
-│       ├── data/           # backlog.ts, docs.ts, specs.ts, sprints.ts
-│       └── pages/          # Dashboard, Docs, Specs, Backlog, Sprints, LspPage...
+├── viewer/                 # React 18 + Tailwind warm palette
 ├── CLAUDE.md               # This file
-├── QUICKSTART.md           # Usage guide
+├── LIGHTSPEC_QUICKSTART.md # New-user getting-started guide
 └── README.md               # GitHub README
 ```
+
+---
+
+## Architecture: Data Flow
+
+```
+lsp init / lsp scan
+  └─ scanner/           Pure detection — no LLM calls
+       ├─ detect-stack.ts        (languages, frameworks, package managers)
+       ├─ detect-architecture.ts (monolith / modular / monorepo / microservices)
+       ├─ detect-routes.ts       (HTTP routes: Express, Gin, Echo, Flask, NestJS...)
+       ├─ detect-tests.ts        (test frameworks + file counts)
+       ├─ detect-docs.ts         (README, spec files)
+       └─ complexity-scorer.ts   (0-100 → micro / standard / full)
+  └─ pipeline/
+       ├─ depth-router.ts        (depth → template list + output file names)
+       ├─ generate-spec.ts       (loads .hbs templates, streams LLM completion, writes .md)
+       └─ task-extractor.ts      (parses tasks from generated markdown, 3-strategy fallback)
+  └─ providers/         Strategy pattern — multiple LLM backends
+       ├─ resolver.ts            (auto-detect priority: Claude Code → Gemini CLI → Anthropic API)
+       ├─ claude-code.provider.ts  (zero API key, uses existing Claude auth via subprocess)
+       ├─ gemini-cli.provider.ts
+       └─ anthropic-api.provider.ts  (ANTHROPIC_API_KEY env, model: claude-sonnet-4-20250514)
+```
+
+**Extensibility:** New providers implement `LLMProvider` interface in `providers/interface.ts` and register in `resolver.ts`. New detectors go in `scanner/`. New depth levels add an `.hbs` template in `prompts/system/` and a route in `depth-router.ts`.
+
+---
 
 ## Key Commands
 
 ```bash
 # CLI
 cd cli && npm run build         # Compile TypeScript → dist/
-cd cli && npm test              # Run vitest test suite
 cd cli && npm run dev           # tsup --watch (development)
+cd cli && npm run typecheck     # Type-check without building
+cd cli && npm test              # Run full vitest test suite
 npm link                        # Make lsp available globally
 
+# Run specific test suites
+cd cli && npx vitest run tests/scanner/       # Scanner unit tests
+cd cli && npx vitest run tests/commands/      # Command unit tests
+cd cli && npx vitest run tests/pipeline/      # Pipeline unit tests
+cd cli && npx vitest run tests/integration/   # E2E integration tests
+cd cli && npx vitest run --coverage           # With coverage report
+cd cli && npm run test:watch                  # Interactive watch mode
+
 # Presentation
-cd presentation && npm run dev  # Vite dev server :5173
+cd presentation && npm run dev   # Vite dev server :5173
 cd presentation && npm run build
 
 # Viewer
-cd viewer && npm run dev        # Vite dev server :5174
+cd viewer && npm run dev         # Vite dev server :5174
 cd viewer && npm run build
-
-# Tests
-cd cli && npx vitest run                              # All tests
-cd cli && npx vitest run tests/scanner/              # Scanner only
-cd cli && npx vitest run --coverage                  # With coverage
 ```
+
+Test fixtures for scanner/integration tests live in `cli/tests/fixtures/` (node-project, python-project, go-gin-project, go-echo-project, empty-project).
+
+## CLI Commands Reference
+
+```bash
+lsp init [path]          # Scan + generate specs (--depth, --provider, --model, --dry-run, -y)
+lsp scan [path]          # Brownfield scanner only, no LLM (--json, --scope)
+lsp status               # Show task progress from .lsp/tasks.md
+lsp graduate             # Convert .lsp/ output to AutoSpec project (--dry-run, --roles, -y)
+lsp done <id>            # Mark a task done in .lsp/tasks.md (--dir)
+lsp undone <id>          # Revert a task to pending (--dir)
+lsp init-backlog         # Convert .lsp/tasks.md → specs/backlog.md (AutoSpec bridge)
+```
+
+`lsp done/undone/status` use `findLspDir()` to search upward from CWD, so they work from any subdirectory of the project.
+
+---
 
 ## Design System Rules (CRITICAL)
 
@@ -134,6 +179,4 @@ cd cli && npx vitest run --coverage                  # With coverage
 
 ## Current Sprint
 
-Sprint 38 🔄 In Progress — see `specs/backlog.md` for active tickets.
-
-7 tickets remaining: 38.5, 38.6, 38.7, 38.8, 38.9, 38.15, 38.17
+See `specs/backlog.md` for the active sprint and open tickets.

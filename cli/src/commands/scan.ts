@@ -6,6 +6,113 @@ import path from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
 import { scanProject } from '../scanner/complexity-scorer.js';
+import type { ScanResult } from '../scanner/types.js';
+
+// ---------------------------------------------------------------------------
+// Confidence signals
+// ---------------------------------------------------------------------------
+
+export type ConfidenceLevel = 'HIGH' | 'LIMITED' | 'NONE' | 'UNKNOWN' | 'NA';
+
+export interface ConfidenceSignals {
+  routeExtraction: 'HIGH' | 'LIMITED' | 'NA';
+  apiDetection: 'HIGH' | 'NONE';
+  architecturePattern: 'HIGH' | 'UNKNOWN';
+}
+
+const NON_JS_BACKEND_FRAMEWORKS = [
+  'gin', 'echo', 'fiber', 'chi',           // Go
+  'actix', 'axum',                          // Rust
+  'rails', 'sinatra',                       // Ruby
+  'django', 'flask', 'fastapi',             // Python
+];
+
+const NON_JS_BACKEND_LANGUAGES = ['go', 'rust', 'ruby', 'python'];
+
+export function buildConfidenceSignals(result: ScanResult): ConfidenceSignals {
+  const { techStack, architecture, routes } = result.context;
+
+  // Route extraction signal
+  const nonJsFrameworks = (techStack.frameworks ?? []).filter(f =>
+    NON_JS_BACKEND_FRAMEWORKS.includes(f.toLowerCase()),
+  );
+  const nonJsLangs = (techStack.languages ?? []).filter(l =>
+    NON_JS_BACKEND_LANGUAGES.includes(l.toLowerCase()),
+  );
+
+  let routeExtraction: ConfidenceSignals['routeExtraction'];
+  if (routes.routes.length > 0) {
+    routeExtraction = 'HIGH';
+  } else if (nonJsFrameworks.length > 0 || nonJsLangs.length > 0) {
+    routeExtraction = 'LIMITED';
+  } else {
+    routeExtraction = 'NA';
+  }
+
+  // API detection signal
+  const apiDetection: ConfidenceSignals['apiDetection'] = architecture.hasApi ? 'HIGH' : 'NONE';
+
+  // Architecture pattern signal
+  const architecturePattern: ConfidenceSignals['architecturePattern'] =
+    architecture.pattern === 'unknown' ? 'UNKNOWN' : 'HIGH';
+
+  return { routeExtraction, apiDetection, architecturePattern };
+}
+
+function confidenceColor(level: ConfidenceLevel): string {
+  if (level === 'HIGH') return chalk.green(level);
+  return chalk.yellow(level);
+}
+
+export function buildConfidenceLines(result: ScanResult): string[] {
+  const { techStack, architecture, routes } = result.context;
+  const signals = buildConfidenceSignals(result);
+  const lines: string[] = [];
+
+  // Route extraction line
+  if (signals.routeExtraction === 'HIGH') {
+    const fw = routes.framework ?? 'detected framework';
+    lines.push(
+      `  Route extraction:     ${confidenceColor('HIGH')} — ${routes.routes.length} routes found via ${fw}`,
+    );
+  } else if (signals.routeExtraction === 'LIMITED') {
+    const nonJsLangs = (techStack.languages ?? []).filter(l =>
+      NON_JS_BACKEND_LANGUAGES.includes(l.toLowerCase()),
+    );
+    const nonJsFrameworks = (techStack.frameworks ?? []).filter(f =>
+      NON_JS_BACKEND_FRAMEWORKS.includes(f.toLowerCase()),
+    );
+    const label = nonJsLangs[0] ?? nonJsFrameworks[0] ?? 'non-JS';
+    lines.push(
+      `  Route extraction:     ${confidenceColor('LIMITED')} — no routes found for ${label} project` +
+        chalk.dim(' (consider --srs to provide API documentation)'),
+    );
+  } else {
+    lines.push(
+      `  Route extraction:     ${confidenceColor('NA')} — no HTTP framework detected`,
+    );
+  }
+
+  // API detection line
+  if (signals.apiDetection === 'HIGH') {
+    lines.push(`  API detection:        ${confidenceColor('HIGH')}`);
+  } else {
+    lines.push(
+      `  API detection:        ${confidenceColor('NONE')} — no API entry points found` +
+        chalk.dim(' (would detect: routes/ controllers/ handlers/ api/ or main.go)'),
+    );
+  }
+
+  // Architecture pattern line (only show if UNKNOWN)
+  if (signals.architecturePattern === 'UNKNOWN') {
+    lines.push(
+      `  Architecture pattern: ${confidenceColor('UNKNOWN')} — no recognized structure` +
+        chalk.dim(' (would detect: monorepo/modular/microservices/monolith patterns)'),
+    );
+  }
+
+  return lines;
+}
 
 export async function scanCommand(
   projectPath: string | undefined,
@@ -29,7 +136,16 @@ export async function scanCommand(
   }
 
   if (asJson) {
-    console.log(JSON.stringify(result, null, 2));
+    const signals = buildConfidenceSignals(result);
+    const output = {
+      ...result,
+      confidence: {
+        routeExtraction: signals.routeExtraction,
+        apiDetection: signals.apiDetection,
+        architecturePattern: signals.architecturePattern,
+      },
+    };
+    console.log(JSON.stringify(output, null, 2));
     return;
   }
 
@@ -102,5 +218,13 @@ export async function scanCommand(
   console.log(`  Lines:      ${chalk.cyan(metrics.totalLines.toLocaleString())}`);
   console.log(`  Source:     ${chalk.cyan(metrics.sourceFiles)}`);
   console.log(`  Tests:      ${chalk.cyan(metrics.testFiles)}`);
+  console.log('');
+
+  // Detection Confidence
+  console.log(chalk.bold('  Detection Confidence'));
+  const confidenceLines = buildConfidenceLines(result);
+  for (const line of confidenceLines) {
+    console.log(line);
+  }
   console.log('');
 }
