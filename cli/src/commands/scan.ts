@@ -65,7 +65,7 @@ function confidenceColor(level: ConfidenceLevel): string {
 }
 
 export function buildConfidenceLines(result: ScanResult): string[] {
-  const { techStack, architecture, routes } = result.context;
+  const { techStack, routes } = result.context;
   const signals = buildConfidenceSignals(result);
   const lines: string[] = [];
 
